@@ -34,19 +34,19 @@
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_untaxed_diff) > 0.01"
+                               decoration-danger="sdi_untaxed_diff > 0.01 or sdi_untaxed_diff &lt; -0.01"
                                help="Imponibile totale estratto dal file XML"/>
                         <field name="sdi_xml_tax" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_tax_diff) > 0.01"
+                               decoration-danger="sdi_tax_diff > 0.01 or sdi_tax_diff &lt; -0.01"
                                help="IVA totale estratta dal file XML"/>
                         <field name="sdi_xml_total" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_total_diff) > 0.01"
+                               decoration-danger="sdi_total_diff > 0.01 or sdi_total_diff &lt; -0.01"
                                help="Totale calcolato (Imponibile + IVA) dal file XML"/>
                     </group>
                     
@@ -55,22 +55,22 @@
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_untaxed_diff) > 0.01"
-                               decoration-success="abs(sdi_untaxed_diff) &lt;= 0.01"
+                               decoration-danger="sdi_untaxed_diff > 0.01 or sdi_untaxed_diff &lt; -0.01"
+                               decoration-success="sdi_untaxed_diff &lt;= 0.01 and sdi_untaxed_diff >= -0.01"
                                help="Differenza tra imponibile XML e Odoo"/>
                         <field name="sdi_tax_diff" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_tax_diff) > 0.01"
-                               decoration-success="abs(sdi_tax_diff) &lt;= 0.01"
+                               decoration-danger="sdi_tax_diff > 0.01 or sdi_tax_diff &lt; -0.01"
+                               decoration-success="sdi_tax_diff &lt;= 0.01 and sdi_tax_diff >= -0.01"
                                help="Differenza tra IVA XML e Odoo"/>
                         <field name="sdi_total_diff" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_total_diff) > 0.01"
-                               decoration-success="abs(sdi_total_diff) &lt;= 0.01"
+                               decoration-danger="sdi_total_diff > 0.01 or sdi_total_diff &lt; -0.01"
+                               decoration-success="sdi_total_diff &lt;= 0.01 and sdi_total_diff >= -0.01"
                                help="Differenza tra totale XML e Odoo"/>
                     </group>
                     
@@ -85,7 +85,7 @@
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="abs(sdi_gift_transport_diff) > 0.01"
+                               decoration-danger="sdi_gift_transport_diff > 0.01 or sdi_gift_transport_diff &lt; -0.01"
                                help="Differenza dovuta a omaggi, trasporti non imponibili, ecc."/>
                         <field name="sdi_diff_type" 
                                readonly="1"
