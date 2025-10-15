@@ -345,31 +345,32 @@ class AccountMove(models.Model):
         riepiloghi_xml = extracted_totals['riepiloghi_iva']
         
         # Ottieni i totali IVA effettivi di Odoo per ogni aliquota
-        # Usa amount_by_group che contiene: (tax_name, base, tax_amount, ...)
+        # Usa le righe IVA (tax_line_id) e le righe fattura per calcolare i totali
         odoo_by_tax = {}
         
-        if self.amount_by_group:
-            for group in self.amount_by_group:
-                # group è una tupla: (tax_name, base_amount, tax_amount, group_key)
-                tax_name = group[0]
-                base_amount = group[1]
-                tax_amount = group[2]
-                
-                # Estrai l'aliquota dal nome della tassa con regex
-                import re
-                match = re.search(r'(\d+(?:\.\d+)?)\s*%', tax_name)
-                if match:
-                    tax_rate = float(match.group(1))
-                else:
-                    # Fallback: prova a estrarre dalla group_key
-                    tax_rate = 0.0
-                
-                odoo_by_tax[tax_rate] = {
-                    'untaxed': base_amount,
-                    'tax': tax_amount
-                }
+        # Prima, calcola l'imponibile per ogni aliquota dalle righe fattura
+        for line in self.invoice_line_ids:
+            if line.display_type in ('line_section', 'line_note'):
+                continue
+            
+            tax_rate = 0.0
+            if line.tax_ids:
+                tax = line.tax_ids[0]
+                tax_rate = tax.amount
+            
+            if tax_rate not in odoo_by_tax:
+                odoo_by_tax[tax_rate] = {'untaxed': 0.0, 'tax': 0.0}
+            
+            odoo_by_tax[tax_rate]['untaxed'] += line.price_subtotal
         
-        _logger.info(f"Odoo per aliquota (da amount_by_group): {odoo_by_tax}")
+        # Poi, prendi l'IVA effettiva dalle righe IVA
+        tax_lines = self.line_ids.filtered(lambda l: l.tax_line_id)
+        for tax_line in tax_lines:
+            tax_rate = tax_line.tax_line_id.amount
+            if tax_rate in odoo_by_tax:
+                odoo_by_tax[tax_rate]['tax'] += tax_line.price_subtotal
+        
+        _logger.info(f"Odoo per aliquota (da righe IVA): {odoo_by_tax}")
         _logger.info(f"XML riepiloghi: {riepiloghi_xml}")
         
         # Crea righe di arrotondamento
