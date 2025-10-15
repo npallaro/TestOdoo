@@ -212,7 +212,7 @@ class AccountMove(models.Model):
                         elif elem.tag.endswith('Natura') and elem.text:
                             natura_elem = elem
                     
-                    if aliquota_elem and imponibile_elem and imposta_elem:
+                    if aliquota_elem is not None and imponibile_elem is not None and imposta_elem is not None:
                         try:
                             aliquota = Decimal(aliquota_elem.text)
                             imponibile = Decimal(imponibile_elem.text)
