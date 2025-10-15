@@ -2,7 +2,9 @@
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from decimal import Decimal
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class AccountMove(models.Model):
@@ -50,6 +52,96 @@ class AccountMove(models.Model):
                 for line in move.invoice_line_ids
             )
 
+    def _extract_xml_total_from_attachment(self):
+        """Estrae il totale dal file XML allegato alla fattura"""
+        self.ensure_one()
+        
+        # Cerca allegati XML
+        xml_attachments = self.attachment_ids.filtered(
+            lambda a: a.name.endswith('.xml') or 'xml' in a.name.lower()
+        )
+        
+        if not xml_attachments:
+            return None
+        
+        # Prendi il primo allegato XML
+        attachment = xml_attachments[0]
+        
+        try:
+            import xml.etree.ElementTree as ET
+            
+            # Leggi il contenuto dell'allegato
+            xml_content = attachment.raw
+            
+            # Prova a parsare l'XML
+            try:
+                root = ET.fromstring(xml_content)
+            except:
+                # Se fallisce, potrebbe essere un p7m o corrotto
+                _logger.warning(f"Impossibile parsare il file XML {attachment.name}")
+                return None
+            
+            # Namespace per FatturaPA
+            namespaces = {
+                'p': 'http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2',
+            }
+            
+            # Cerca il totale documento con vari metodi
+            total_element = None
+            
+            # Metodo 1: con namespace
+            total_element = root.find('.//p:ImportoTotaleDocumento', namespaces)
+            
+            # Metodo 2: senza namespace
+            if total_element is None:
+                total_element = root.find('.//ImportoTotaleDocumento')
+            
+            # Metodo 3: cerca in tutti gli elementi
+            if total_element is None:
+                for elem in root.iter():
+                    if elem.tag.endswith('ImportoTotaleDocumento'):
+                        total_element = elem
+                        break
+            
+            if total_element is not None and total_element.text:
+                try:
+                    return float(total_element.text)
+                except ValueError:
+                    _logger.warning(f"Impossibile convertire il totale: {total_element.text}")
+                    return None
+            
+        except Exception as e:
+            _logger.warning(f"Errore nell'estrazione del totale XML: {e}")
+        
+        return None
+
+    def action_auto_fill_xml_total(self):
+        """Pulsante per compilare automaticamente il totale XML dall'allegato"""
+        self.ensure_one()
+        
+        extracted_total = self._extract_xml_total_from_attachment()
+        
+        if extracted_total:
+            self.sdi_xml_total = extracted_total
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Totale XML Estratto'),
+                    'message': _('Il totale XML SDI (%.2f €) è stato estratto automaticamente dal file allegato.') % extracted_total,
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        else:
+            raise UserError(_(
+                'Non è stato possibile estrarre il totale dal file XML.\n\n'
+                'Verificare che:\n'
+                '- Il file XML sia allegato alla fattura\n'
+                '- Il file sia in formato FatturaPA valido\n\n'
+                'In alternativa, inserire manualmente il totale nel campo "Totale XML SDI".'
+            ))
+
     def action_add_sdi_rounding_line(self):
         """
         Aggiunge una riga di arrotondamento per bilanciare la differenza
@@ -70,12 +162,19 @@ class AccountMove(models.Model):
                 'una riga di arrotondamento.'
             ))
         
-        # Verifica che sia stato impostato il totale XML
+        # Se non è stato impostato il totale XML manualmente, prova a estrarlo dall'allegato
         if not self.sdi_xml_total:
-            raise UserError(_(
-                'È necessario inserire il totale del file XML SDI nel campo '
-                '"Totale XML SDI" prima di procedere.'
-            ))
+            extracted_total = self._extract_xml_total_from_attachment()
+            if extracted_total:
+                self.sdi_xml_total = extracted_total
+            else:
+                raise UserError(_(
+                    'Non è stato possibile trovare il totale del file XML SDI.\n\n'
+                    'Opzioni:\n'
+                    '1. Cliccare sul pulsante "Estrai Totale da XML" per provare l\'estrazione automatica\n'
+                    '2. Inserire manualmente il totale nel campo "Totale XML SDI" nel tab "Altre Informazioni"\n'
+                    '3. Verificare che il file XML sia allegato alla fattura'
+                ))
         
         # Verifica se esiste già una riga di arrotondamento
         if self.has_rounding_line:
