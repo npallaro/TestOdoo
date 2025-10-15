@@ -15,8 +15,7 @@ class AccountMove(models.Model):
         string='Totale XML SDI',
         currency_field='currency_id',
         help='Totale della fattura come indicato nel file XML dello SDI. '
-             'Questo campo può essere compilato manualmente o automaticamente '
-             'durante l\'importazione della fattura elettronica.'
+             'Questo campo viene compilato automaticamente durante l\'estrazione.'
     )
     
     # Campo calcolato per mostrare la differenza
@@ -115,37 +114,11 @@ class AccountMove(models.Model):
         
         return None
 
-    def action_auto_fill_xml_total(self):
-        """Pulsante per compilare automaticamente il totale XML dall'allegato"""
-        self.ensure_one()
-        
-        extracted_total = self._extract_xml_total_from_attachment()
-        
-        if extracted_total:
-            self.sdi_xml_total = extracted_total
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Totale XML Estratto'),
-                    'message': _('Il totale XML SDI (%.2f €) è stato estratto automaticamente dal file allegato.') % extracted_total,
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
-        else:
-            raise UserError(_(
-                'Non è stato possibile estrarre il totale dal file XML.\n\n'
-                'Verificare che:\n'
-                '- Il file XML sia allegato alla fattura\n'
-                '- Il file sia in formato FatturaPA valido\n\n'
-                'In alternativa, inserire manualmente il totale nel campo "Totale XML SDI".'
-            ))
-
     def action_add_sdi_rounding_line(self):
         """
-        Aggiunge una riga di arrotondamento per bilanciare la differenza
-        tra il totale XML SDI e il totale calcolato da Odoo
+        Estrae automaticamente il totale dal file XML e aggiunge una riga di arrotondamento
+        per bilanciare la differenza tra il totale XML SDI e il totale calcolato da Odoo.
+        Tutto in un solo click!
         """
         self.ensure_one()
         
@@ -162,20 +135,6 @@ class AccountMove(models.Model):
                 'una riga di arrotondamento.'
             ))
         
-        # Se non è stato impostato il totale XML manualmente, prova a estrarlo dall'allegato
-        if not self.sdi_xml_total:
-            extracted_total = self._extract_xml_total_from_attachment()
-            if extracted_total:
-                self.sdi_xml_total = extracted_total
-            else:
-                raise UserError(_(
-                    'Non è stato possibile trovare il totale del file XML SDI.\n\n'
-                    'Opzioni:\n'
-                    '1. Cliccare sul pulsante "Estrai Totale da XML" per provare l\'estrazione automatica\n'
-                    '2. Inserire manualmente il totale nel campo "Totale XML SDI" nel tab "Altre Informazioni"\n'
-                    '3. Verificare che il file XML sia allegato alla fattura'
-                ))
-        
         # Verifica se esiste già una riga di arrotondamento
         if self.has_rounding_line:
             raise UserError(_(
@@ -183,15 +142,40 @@ class AccountMove(models.Model):
                 'Rimuoverla prima di crearne una nuova.'
             ))
         
+        # ESTRAZIONE AUTOMATICA DEL TOTALE XML
+        extracted_total = self._extract_xml_total_from_attachment()
+        
+        if not extracted_total:
+            raise UserError(_(
+                'Non è stato possibile estrarre il totale dal file XML allegato.\n\n'
+                'Verificare che:\n'
+                '• Il file XML (.xml o .p7m) sia allegato alla fattura\n'
+                '• Il file sia in formato FatturaPA valido\n'
+                '• Il file contenga il tag <ImportoTotaleDocumento>\n\n'
+                'Se il problema persiste, contattare il supporto tecnico.'
+            ))
+        
+        # Salva il totale estratto
+        self.sdi_xml_total = extracted_total
+        
         # Calcola la differenza
         difference = self.sdi_rounding_difference
         
         # Se la differenza è zero o trascurabile, non fare nulla
         if abs(difference) < 0.01:
-            raise UserError(_(
-                'La differenza è troppo piccola (< 0.01 €) e non richiede '
-                'una riga di arrotondamento.'
-            ))
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Nessun Arrotondamento Necessario'),
+                    'message': _(
+                        'Il totale XML (%.2f €) corrisponde già al totale calcolato da Odoo.\n'
+                        'Non è necessario aggiungere una riga di arrotondamento.'
+                    ) % extracted_total,
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
         
         # Cerca il prodotto di arrotondamento
         rounding_product = self.env['product.product'].search([
@@ -230,13 +214,15 @@ class AccountMove(models.Model):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('Riga di Arrotondamento Aggiunta'),
+                'title': _('✓ Arrotondamento Completato'),
                 'message': _(
-                    'È stata aggiunta una riga di arrotondamento di %.2f € '
-                    'per bilanciare la fattura.'
-                ) % difference,
+                    'Totale XML estratto: %.2f €\n'
+                    'Totale Odoo precedente: %.2f €\n'
+                    'Riga di arrotondamento aggiunta: %.2f €\n\n'
+                    'Il totale della fattura ora corrisponde al file XML!'
+                ) % (extracted_total, extracted_total - difference, difference),
                 'type': 'success',
-                'sticky': False,
+                'sticky': True,
             }
         }
 
@@ -286,6 +272,9 @@ class AccountMove(models.Model):
         
         rounding_lines.unlink()
         
+        # Resetta anche il campo totale XML
+        self.sdi_xml_total = 0.0
+        
         # Ricalcola i totali
         self._recompute_dynamic_lines(recompute_all_taxes=True)
         
@@ -294,7 +283,7 @@ class AccountMove(models.Model):
             'tag': 'display_notification',
             'params': {
                 'title': _('Righe di Arrotondamento Rimosse'),
-                'message': _('Le righe di arrotondamento sono state rimosse.'),
+                'message': _('Le righe di arrotondamento sono state rimosse e il campo "Totale XML SDI" è stato azzerato.'),
                 'type': 'info',
                 'sticky': False,
             }

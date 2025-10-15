@@ -15,7 +15,7 @@
                         type="object"
                         class="btn-primary"
                         invisible="move_type not in ('in_invoice', 'in_refund') or state != 'draft' or has_rounding_line"
-                        help="Aggiunge una riga di arrotondamento per bilanciare la differenza con il totale XML SDI"/>
+                        help="Estrae automaticamente il totale dal file XML e aggiunge una riga di arrotondamento"/>
                 
                 <button name="action_remove_sdi_rounding_lines"
                         string="Rimuovi Arrotondamento SDI"
@@ -23,16 +23,9 @@
                         class="btn-secondary"
                         invisible="move_type not in ('in_invoice', 'in_refund') or state != 'draft' or not has_rounding_line"
                         help="Rimuove le righe di arrotondamento SDI dalla fattura"/>
-                
-                <button name="action_auto_fill_xml_total"
-                        string="Estrai Totale da XML"
-                        type="object"
-                        class="btn-secondary"
-                        invisible="move_type not in ('in_invoice', 'in_refund') or state != 'draft'"
-                        help="Estrae automaticamente il totale dal file XML allegato"/>
             </xpath>
             
-            <!-- Aggiungi i campi nel tab "Altre Informazioni" -->
+            <!-- Aggiungi i campi nel tab "Altre Informazioni" (solo per visualizzazione) -->
             <xpath expr="//notebook/page[@name='other_info']" position="inside">
                 <group name="sdi_rounding_info" string="Informazioni SDI" 
                        invisible="move_type not in ('in_invoice', 'in_refund')">
@@ -40,13 +33,15 @@
                         <field name="sdi_xml_total" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
-                               help="Inserire qui il totale della fattura come indicato nel file XML dello SDI"/>
+                               readonly="1"
+                               help="Totale estratto automaticamente dal file XML dello SDI"/>
                         <field name="sdi_rounding_difference" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
                                decoration-danger="sdi_rounding_difference > 0.01 or sdi_rounding_difference &lt; -0.01"
-                               decoration-success="sdi_rounding_difference &lt;= 0.01 and sdi_rounding_difference >= -0.01"/>
+                               decoration-success="sdi_rounding_difference &lt;= 0.01 and sdi_rounding_difference >= -0.01"
+                               help="Differenza tra il totale XML e il totale calcolato da Odoo"/>
                         <field name="has_rounding_line" invisible="1"/>
                     </group>
                 </group>
