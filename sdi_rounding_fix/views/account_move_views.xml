@@ -25,8 +25,8 @@
                         help="Rimuove tutte le righe di arrotondamento SDI dalla fattura"/>
             </xpath>
             
-            <!-- Aggiungi campi informativi SDI sotto il totale -->
-            <xpath expr="//field[@name='amount_total']" position="after">
+            <!-- Aggiungi campi informativi SDI nel gruppo invoice_outstanding_credits_debits -->
+            <xpath expr="//group[@name='invoice_outstanding_credits_debits']" position="after">
                 <field name="sdi_total_to_pay" 
                        widget="monetary"
                        options="{'currency_field': 'currency_id'}"
