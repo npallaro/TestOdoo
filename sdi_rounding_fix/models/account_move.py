@@ -260,9 +260,9 @@ class AccountMove(models.Model):
                         pass
                 
                 return {
-                    'untaxed': float(total_imponibile.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
-                    'tax': float(total_iva.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
-                    'total': float(total_calcolato.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                    'untaxed': float(total_imponibile),
+                    'tax': float(total_iva),
+                    'total': float(total_calcolato),
                     'total_to_pay': total_to_pay,
                     'riepiloghi_iva': riepiloghi_iva
                 }
