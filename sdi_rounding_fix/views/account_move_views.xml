@@ -25,31 +25,6 @@
                         help="Rimuove tutte le righe di arrotondamento SDI dalla fattura"/>
             </xpath>
             
-            <!-- Aggiungi campi informativi SDI nel gruppo invoice_outstanding_credits_debits -->
-            <xpath expr="//group[@name='invoice_outstanding_credits_debits']" position="after">
-                <field name="sdi_total_to_pay" 
-                       widget="monetary"
-                       options="{'currency_field': 'currency_id'}"
-                       string="Totale a Pagare SDI"
-                       readonly="1"
-                       invisible="move_type not in ('in_invoice', 'in_refund') or not sdi_total_to_pay"
-                       help="Totale a pagare dal file XML (ImportoTotaleDocumento)"/>
-                <field name="sdi_gift_transport_diff" 
-                       widget="monetary"
-                       options="{'currency_field': 'currency_id'}"
-                       string="Diff. Omaggi/Trasporti"
-                       readonly="1"
-                       decoration-danger="sdi_gift_transport_diff > 0.01 or sdi_gift_transport_diff &lt; -0.01"
-                       invisible="move_type not in ('in_invoice', 'in_refund') or not sdi_gift_transport_diff or (sdi_gift_transport_diff &lt;= 0.01 and sdi_gift_transport_diff >= -0.01)"
-                       help="Differenza dovuta a omaggi, trasporti non imponibili, ecc."/>
-                <field name="sdi_diff_type" 
-                       string="Tipo Differenza"
-                       readonly="1"
-                       invisible="move_type not in ('in_invoice', 'in_refund') or not sdi_diff_type"
-                       decoration-warning="True"
-                       help="Descrizione del tipo di differenza"/>
-            </xpath>
-            
             <!-- Aggiungi i campi nel tab "Altre Informazioni" -->
             <xpath expr="//notebook/page[@name='other_info']" position="inside">
                 <group name="sdi_rounding_info" string="Informazioni SDI" 
@@ -99,22 +74,24 @@
                                help="Differenza tra totale XML e Odoo"/>
                     </group>
                     
-                    <group name="sdi_payment_info" string="Informazioni Pagamento" 
-                           invisible="not sdi_total_to_pay">
+                    <group name="sdi_payment_info" string="Informazioni Pagamento" colspan="2">
                         <field name="sdi_total_to_pay" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
+                               invisible="not sdi_total_to_pay"
                                help="Totale a pagare dal tag ImportoTotaleDocumento"/>
                         <field name="sdi_gift_transport_diff" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
                                decoration-danger="sdi_gift_transport_diff > 0.01 or sdi_gift_transport_diff &lt; -0.01"
+                               invisible="not sdi_gift_transport_diff or (sdi_gift_transport_diff &lt;= 0.01 and sdi_gift_transport_diff >= -0.01)"
                                help="Differenza dovuta a omaggi, trasporti non imponibili, ecc."/>
                         <field name="sdi_diff_type" 
                                readonly="1"
                                invisible="not sdi_diff_type"
+                               decoration-warning="True"
                                help="Tipo di differenza"/>
                     </group>
                     
