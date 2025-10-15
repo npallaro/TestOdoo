@@ -4,6 +4,9 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import logging
 import re
+import subprocess
+import tempfile
+import os
 
 _logger = logging.getLogger(__name__)
 
@@ -52,6 +55,59 @@ class AccountMove(models.Model):
                 for line in move.invoice_line_ids
             )
 
+    def _decrypt_p7m_file(self, file_content):
+        """
+        Decifra un file .p7m usando OpenSSL e restituisce il contenuto XML.
+        I file .p7m sono file PKCS#7 firmati digitalmente.
+        """
+        try:
+            # Crea file temporanei per input e output
+            with tempfile.NamedTemporaryFile(mode='wb', suffix='.p7m', delete=False) as tmp_p7m:
+                tmp_p7m.write(file_content)
+                tmp_p7m_path = tmp_p7m.name
+            
+            with tempfile.NamedTemporaryFile(mode='wb', suffix='.xml', delete=False) as tmp_xml:
+                tmp_xml_path = tmp_xml.name
+            
+            try:
+                # Usa OpenSSL per estrarre il contenuto del file .p7m
+                # -verify: verifica la firma (ma non fallisce se non può verificare)
+                # -noverify: non verifica i certificati (accetta file anche senza catena di certificati valida)
+                # -in: file di input (.p7m)
+                # -out: file di output (.xml)
+                result = subprocess.run(
+                    ['openssl', 'smime', '-verify', '-noverify', '-in', tmp_p7m_path, '-inform', 'DER', '-out', tmp_xml_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                # Anche se la verifica fallisce, il contenuto viene estratto
+                # Leggi il file XML estratto
+                if os.path.exists(tmp_xml_path) and os.path.getsize(tmp_xml_path) > 0:
+                    with open(tmp_xml_path, 'rb') as f:
+                        xml_content = f.read()
+                    _logger.info("File .p7m decifrato con successo usando OpenSSL")
+                    return xml_content
+                else:
+                    _logger.warning(f"OpenSSL non ha prodotto output. Stderr: {result.stderr}")
+                    return None
+                    
+            finally:
+                # Pulisci i file temporanei
+                try:
+                    os.unlink(tmp_p7m_path)
+                    os.unlink(tmp_xml_path)
+                except:
+                    pass
+                    
+        except subprocess.TimeoutExpired:
+            _logger.error("Timeout durante la decifrazione del file .p7m")
+            return None
+        except Exception as e:
+            _logger.error(f"Errore durante la decifrazione del file .p7m: {e}", exc_info=True)
+            return None
+
     def _extract_total_from_messages(self):
         """
         Estrae il totale dai messaggi/chatter della fattura.
@@ -87,43 +143,20 @@ class AccountMove(models.Model):
         
         return None
 
-    def _extract_xml_total_from_attachment(self):
+    def _parse_xml_and_extract_total(self, xml_content):
         """
-        Estrae il totale dal file XML allegato alla fattura.
-        Gestisce file .xml e .p7m (firmati digitalmente).
+        Parsa il contenuto XML e estrae il totale.
+        Supporta sia il tag ImportoTotaleDocumento che il calcolo dalle righe.
         """
-        self.ensure_one()
-        
-        # Prima prova a estrarre dai messaggi (più affidabile per file .p7m)
-        total_from_messages = self._extract_total_from_messages()
-        if total_from_messages:
-            return total_from_messages
-        
-        # Se non trovato nei messaggi, prova a leggere il file XML direttamente
-        # Cerca allegati XML (solo .xml, non .p7m che sono firmati)
-        xml_attachments = self.attachment_ids.filtered(
-            lambda a: a.name.endswith('.xml') and not a.name.endswith('.p7m')
-        )
-        
-        if not xml_attachments:
-            _logger.info("Nessun file XML non firmato trovato, il totale dovrebbe essere nei messaggi")
-            return None
-        
-        # Prendi il primo allegato XML
-        attachment = xml_attachments[0]
-        
         try:
             import xml.etree.ElementTree as ET
             from decimal import Decimal, ROUND_HALF_UP
-            
-            # Leggi il contenuto dell'allegato
-            xml_content = attachment.raw
             
             # Prova a parsare l'XML
             try:
                 root = ET.fromstring(xml_content)
             except Exception as e:
-                _logger.warning(f"Impossibile parsare il file XML {attachment.name}: {e}")
+                _logger.warning(f"Impossibile parsare il contenuto XML: {e}")
                 return None
             
             # Namespace per FatturaPA
@@ -259,7 +292,62 @@ class AccountMove(models.Model):
             return total_finale
             
         except Exception as e:
-            _logger.error(f"Errore nell'estrazione del totale XML: {e}", exc_info=True)
+            _logger.error(f"Errore nel parsing dell'XML: {e}", exc_info=True)
+        
+        return None
+
+    def _extract_xml_total_from_attachment(self):
+        """
+        Estrae il totale dal file XML allegato alla fattura.
+        Gestisce file .xml e .p7m (firmati digitalmente).
+        """
+        self.ensure_one()
+        
+        # METODO 1: Cerca nei messaggi (più veloce e affidabile)
+        total_from_messages = self._extract_total_from_messages()
+        if total_from_messages:
+            return total_from_messages
+        
+        # METODO 2: Leggi direttamente dai file allegati
+        _logger.info("Totale non trovato nei messaggi, provo a leggere i file allegati...")
+        
+        # Cerca allegati XML (.xml e .p7m)
+        xml_attachments = self.attachment_ids.filtered(
+            lambda a: a.name.endswith('.xml') or a.name.endswith('.p7m')
+        )
+        
+        if not xml_attachments:
+            _logger.warning("Nessun file XML o .p7m trovato negli allegati")
+            return None
+        
+        # Prova con ogni allegato trovato
+        for attachment in xml_attachments:
+            _logger.info(f"Provo a leggere il file: {attachment.name}")
+            
+            try:
+                # Leggi il contenuto dell'allegato
+                file_content = attachment.raw
+                xml_content = None
+                
+                # Se è un file .p7m, decifralo con OpenSSL
+                if attachment.name.endswith('.p7m'):
+                    _logger.info("File .p7m rilevato, decifrazione con OpenSSL...")
+                    xml_content = self._decrypt_p7m_file(file_content)
+                    if not xml_content:
+                        _logger.warning(f"Impossibile decifrare il file .p7m: {attachment.name}")
+                        continue
+                else:
+                    # È già un file .xml
+                    xml_content = file_content
+                
+                # Parsa l'XML ed estrai il totale
+                total = self._parse_xml_and_extract_total(xml_content)
+                if total:
+                    return total
+                    
+            except Exception as e:
+                _logger.error(f"Errore durante l'elaborazione del file {attachment.name}: {e}", exc_info=True)
+                continue
         
         return None
 
@@ -298,11 +386,11 @@ class AccountMove(models.Model):
             raise UserError(_(
                 'Non è stato possibile estrarre il totale dal file XML.\n\n'
                 'Verificare che:\n'
-                '• La fattura sia stata importata tramite il sistema di fatturazione elettronica\n'
-                '• Il file XML sia allegato alla fattura\n'
-                '• Nei messaggi della fattura sia presente il "Valore totale dal file XML"\n\n'
-                'Se la fattura è stata creata manualmente, inserire il totale XML manualmente '
-                'nel campo "Totale XML SDI" nel tab "Altre Informazioni".'
+                '• Il file XML (.xml o .p7m) sia allegato alla fattura\n'
+                '• Il file sia in formato FatturaPA valido\n'
+                '• OpenSSL sia disponibile sul server (per file .p7m)\n\n'
+                'In alternativa, inserire manualmente il totale nel campo\n'
+                '"Totale XML SDI" nel tab "Altre Informazioni" e riprovare.'
             ))
         
         # Salva il totale estratto
