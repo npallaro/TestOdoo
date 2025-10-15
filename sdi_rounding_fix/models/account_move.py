@@ -450,6 +450,7 @@ class AccountMove(models.Model):
         # Ricalcola i totali della fattura
         self.invalidate_recordset(['amount_total', 'amount_untaxed', 'amount_tax'])
         
+        # Mostra notifica e ricarica la vista
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -463,6 +464,7 @@ class AccountMove(models.Model):
                 ) % (extracted_total, extracted_total - difference, difference),
                 'type': 'success',
                 'sticky': True,
+                'next': {'type': 'ir.actions.act_window_close'},
             }
         }
 
@@ -492,67 +494,68 @@ class AccountMove(models.Model):
         
         return product
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Override del metodo create per aggiungere automaticamente l'arrotondamento dopo l'importazione"""
-        moves = super(AccountMove, self).create(vals_list)
+    def write(self, vals):
+        """Override del metodo write per aggiungere automaticamente l'arrotondamento dopo l'importazione"""
+        result = super(AccountMove, self).write(vals)
         
-        # Per ogni fattura creata, verifica se serve l'arrotondamento
-        for move in moves:
-            # Se è una fattura fornitore appena importata, prova ad aggiungere l'arrotondamento automaticamente
-            if move.move_type in ('in_invoice', 'in_refund') and move.state == 'draft':
-                # Usa un try-except per non bloccare la creazione se qualcosa va storto
-                try:
-                    # Verifica se c'è già una differenza significativa
-                    extracted_total = move._extract_xml_total_from_attachment()
-                    if extracted_total:
-                        move.sdi_xml_total = extracted_total
-                        difference = extracted_total - move.amount_total
-                        
-                        # Se c'è una differenza significativa, aggiungi automaticamente l'arrotondamento
-                        if abs(difference) >= 0.01:
-                            _logger.info(f"Fattura {move.name}: rilevata differenza di {difference} €, aggiungo arrotondamento automatico")
+        # Se vengono aggiunti allegati, potrebbe essere un'importazione di fattura elettronica
+        # Verifica se serve l'arrotondamento automatico
+        if 'attachment_ids' in vals or 'invoice_line_ids' in vals:
+            for move in self:
+                # Se è una fattura fornitore in bozza e non ha già una riga di arrotondamento
+                if move.move_type in ('in_invoice', 'in_refund') and move.state == 'draft' and not move.has_rounding_line:
+                    # Usa un try-except per non bloccare il salvataggio
+                    try:
+                        # Verifica se c'è una differenza significativa
+                        extracted_total = move._extract_xml_total_from_attachment()
+                        if extracted_total and not move.sdi_xml_total:
+                            move.sdi_xml_total = extracted_total
+                            difference = extracted_total - move.amount_total
                             
-                            # Cerca il prodotto di arrotondamento
-                            rounding_product = self.env['product.product'].search([
-                                ('default_code', '=', 'SDI_ROUNDING')
-                            ], limit=1)
-                            
-                            if not rounding_product:
-                                rounding_product = move._create_rounding_product()
-                            
-                            account = rounding_product.property_account_expense_id or \
-                                      rounding_product.categ_id.property_account_expense_categ_id
-                            
-                            if account:
-                                # Crea la riga di arrotondamento
-                                self.env['account.move.line'].create({
-                                    'move_id': move.id,
-                                    'product_id': rounding_product.id,
-                                    'name': 'Arrotondamento SDI - Differenza fattura elettronica (automatico)',
-                                    'account_id': account.id,
-                                    'quantity': 1,
-                                    'price_unit': difference,
-                                    'tax_ids': [(5, 0, 0)],
-                                })
+                            # Se c'è una differenza significativa, aggiungi automaticamente l'arrotondamento
+                            if abs(difference) >= 0.01:
+                                _logger.info(f"Fattura {move.name}: rilevata differenza di {difference} €, aggiungo arrotondamento automatico")
                                 
-                                # Ricalcola i totali
-                                move.invalidate_recordset(['amount_total', 'amount_untaxed', 'amount_tax'])
+                                # Cerca il prodotto di arrotondamento
+                                rounding_product = self.env['product.product'].search([
+                                    ('default_code', '=', 'SDI_ROUNDING')
+                                ], limit=1)
                                 
-                                # Aggiungi un messaggio nel chatter
-                                move.message_post(
-                                    body=f"<p>✓ Arrotondamento SDI aggiunto automaticamente</p>"
-                                         f"<ul>"
-                                         f"<li>Totale XML: {extracted_total:.2f} €</li>"
-                                         f"<li>Totale Odoo precedente: {extracted_total - difference:.2f} €</li>"
-                                         f"<li>Arrotondamento applicato: {difference:.2f} €</li>"
-                                         f"</ul>"
-                                )
-                except Exception as e:
-                    # Log l'errore ma non bloccare la creazione della fattura
-                    _logger.warning(f"Impossibile aggiungere arrotondamento automatico alla fattura {move.name}: {e}")
+                                if not rounding_product:
+                                    rounding_product = move._create_rounding_product()
+                                
+                                account = rounding_product.property_account_expense_id or \
+                                          rounding_product.categ_id.property_account_expense_categ_id
+                                
+                                if account:
+                                    # Crea la riga di arrotondamento
+                                    self.env['account.move.line'].with_context(check_move_validity=False).create({
+                                        'move_id': move.id,
+                                        'product_id': rounding_product.id,
+                                        'name': 'Arrotondamento SDI - Differenza fattura elettronica (automatico)',
+                                        'account_id': account.id,
+                                        'quantity': 1,
+                                        'price_unit': difference,
+                                        'tax_ids': [(5, 0, 0)],
+                                    })
+                                    
+                                    # Ricalcola i totali
+                                    move.invalidate_recordset(['amount_total', 'amount_untaxed', 'amount_tax'])
+                                    
+                                    # Aggiungi un messaggio nel chatter
+                                    move.message_post(
+                                        body=f"<p>✓ Arrotondamento SDI aggiunto automaticamente</p>"
+                                             f"<ul>"
+                                             f"<li>Totale XML: {extracted_total:.2f} €</li>"
+                                             f"<li>Totale Odoo precedente: {extracted_total - difference:.2f} €</li>"
+                                             f"<li>Arrotondamento applicato: {difference:.2f} €</li>"
+                                             f"</ul>"
+                                    )
+                    except Exception as e:
+                        # Log l'errore ma non bloccare il salvataggio
+                        _logger.warning(f"Impossibile aggiungere arrotondamento automatico alla fattura {move.name}: {e}")
         
-        return moves
+        return result
 
     def action_remove_sdi_rounding_lines(self):
         """Rimuove tutte le righe di arrotondamento SDI dalla fattura"""
