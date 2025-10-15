@@ -52,7 +52,11 @@ class AccountMove(models.Model):
             )
 
     def _extract_xml_total_from_attachment(self):
-        """Estrae il totale dal file XML allegato alla fattura"""
+        """
+        Estrae il totale dal file XML allegato alla fattura.
+        Metodo 1: Legge il tag <ImportoTotaleDocumento>
+        Metodo 2: Calcola il totale dalle righe fattura + IVA
+        """
         self.ensure_one()
         
         # Cerca allegati XML
@@ -61,6 +65,7 @@ class AccountMove(models.Model):
         )
         
         if not xml_attachments:
+            _logger.warning("Nessun file XML trovato negli allegati")
             return None
         
         # Prendi il primo allegato XML
@@ -68,6 +73,7 @@ class AccountMove(models.Model):
         
         try:
             import xml.etree.ElementTree as ET
+            from decimal import Decimal, ROUND_HALF_UP
             
             # Leggi il contenuto dell'allegato
             xml_content = attachment.raw
@@ -75,9 +81,8 @@ class AccountMove(models.Model):
             # Prova a parsare l'XML
             try:
                 root = ET.fromstring(xml_content)
-            except:
-                # Se fallisce, potrebbe essere un p7m o corrotto
-                _logger.warning(f"Impossibile parsare il file XML {attachment.name}")
+            except Exception as e:
+                _logger.warning(f"Impossibile parsare il file XML {attachment.name}: {e}")
                 return None
             
             # Namespace per FatturaPA
@@ -85,17 +90,17 @@ class AccountMove(models.Model):
                 'p': 'http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2',
             }
             
-            # Cerca il totale documento con vari metodi
+            # METODO 1: Cerca il totale documento
             total_element = None
             
-            # Metodo 1: con namespace
+            # Prova con namespace
             total_element = root.find('.//p:ImportoTotaleDocumento', namespaces)
             
-            # Metodo 2: senza namespace
+            # Prova senza namespace
             if total_element is None:
                 total_element = root.find('.//ImportoTotaleDocumento')
             
-            # Metodo 3: cerca in tutti gli elementi
+            # Cerca in tutti gli elementi
             if total_element is None:
                 for elem in root.iter():
                     if elem.tag.endswith('ImportoTotaleDocumento'):
@@ -104,13 +109,116 @@ class AccountMove(models.Model):
             
             if total_element is not None and total_element.text:
                 try:
-                    return float(total_element.text)
+                    total_from_tag = float(total_element.text)
+                    _logger.info(f"Totale estratto da ImportoTotaleDocumento: {total_from_tag}")
+                    return total_from_tag
                 except ValueError:
                     _logger.warning(f"Impossibile convertire il totale: {total_element.text}")
-                    return None
+            
+            # METODO 2: Calcola il totale dalle righe
+            _logger.info("Tag ImportoTotaleDocumento non trovato, calcolo il totale dalle righe...")
+            
+            # Trova tutte le righe fattura
+            lines = []
+            
+            # Prova con namespace
+            for line in root.findall('.//p:DettaglioLinee', namespaces):
+                lines.append(line)
+            
+            # Prova senza namespace
+            if not lines:
+                for line in root.findall('.//DettaglioLinee'):
+                    lines.append(line)
+            
+            # Cerca in tutti gli elementi
+            if not lines:
+                for elem in root.iter():
+                    if elem.tag.endswith('DettaglioLinee'):
+                        lines.append(elem)
+            
+            if not lines:
+                _logger.warning("Nessuna riga fattura trovata nell'XML")
+                return None
+            
+            # Calcola il totale imponibile dalle righe
+            total_imponibile = Decimal('0.00')
+            
+            for line in lines:
+                # Cerca PrezzoTotale (importo totale della riga)
+                prezzo_totale = None
+                
+                for elem in line.iter():
+                    if elem.tag.endswith('PrezzoTotale') and elem.text:
+                        try:
+                            prezzo_totale = Decimal(elem.text)
+                            break
+                        except:
+                            pass
+                
+                # Se non c'è PrezzoTotale, calcola da PrezzoUnitario * Quantita
+                if prezzo_totale is None:
+                    prezzo_unitario = None
+                    quantita = None
+                    
+                    for elem in line.iter():
+                        if elem.tag.endswith('PrezzoUnitario') and elem.text:
+                            try:
+                                prezzo_unitario = Decimal(elem.text)
+                            except:
+                                pass
+                        elif elem.tag.endswith('Quantita') and elem.text:
+                            try:
+                                quantita = Decimal(elem.text)
+                            except:
+                                pass
+                    
+                    if prezzo_unitario is not None and quantita is not None:
+                        prezzo_totale = prezzo_unitario * quantita
+                
+                if prezzo_totale is not None:
+                    total_imponibile += prezzo_totale
+            
+            _logger.info(f"Totale imponibile calcolato dalle righe: {total_imponibile}")
+            
+            # Trova i riepiloghi IVA
+            total_iva = Decimal('0.00')
+            
+            # Cerca DatiRiepilogo
+            riepiloghi = []
+            for riepilogo in root.findall('.//p:DatiRiepilogo', namespaces):
+                riepiloghi.append(riepilogo)
+            
+            if not riepiloghi:
+                for riepilogo in root.findall('.//DatiRiepilogo'):
+                    riepiloghi.append(riepilogo)
+            
+            if not riepiloghi:
+                for elem in root.iter():
+                    if elem.tag.endswith('DatiRiepilogo'):
+                        riepiloghi.append(elem)
+            
+            for riepilogo in riepiloghi:
+                for elem in riepilogo.iter():
+                    if elem.tag.endswith('Imposta') and elem.text:
+                        try:
+                            total_iva += Decimal(elem.text)
+                        except:
+                            pass
+            
+            _logger.info(f"Totale IVA calcolato: {total_iva}")
+            
+            # Calcola il totale finale
+            total_finale = total_imponibile + total_iva
+            
+            # Arrotonda a 2 decimali
+            total_finale = float(total_finale.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+            
+            _logger.info(f"Totale finale calcolato: {total_finale}")
+            
+            return total_finale
             
         except Exception as e:
-            _logger.warning(f"Errore nell'estrazione del totale XML: {e}")
+            _logger.error(f"Errore nell'estrazione del totale XML: {e}", exc_info=True)
         
         return None
 
@@ -151,8 +259,8 @@ class AccountMove(models.Model):
                 'Verificare che:\n'
                 '• Il file XML (.xml o .p7m) sia allegato alla fattura\n'
                 '• Il file sia in formato FatturaPA valido\n'
-                '• Il file contenga il tag <ImportoTotaleDocumento>\n\n'
-                'Se il problema persiste, contattare il supporto tecnico.'
+                '• Il file contenga le righe fattura o i riepiloghi IVA\n\n'
+                'Dettagli tecnici disponibili nei log del sistema.'
             ))
         
         # Salva il totale estratto
@@ -167,11 +275,13 @@ class AccountMove(models.Model):
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
-                    'title': _('Nessun Arrotondamento Necessario'),
+                    'title': _('✓ Nessun Arrotondamento Necessario'),
                     'message': _(
-                        'Il totale XML (%.2f €) corrisponde già al totale calcolato da Odoo.\n'
-                        'Non è necessario aggiungere una riga di arrotondamento.'
-                    ) % extracted_total,
+                        'Totale XML: %.2f €\n'
+                        'Totale Odoo: %.2f €\n'
+                        'Differenza: %.2f €\n\n'
+                        'La differenza è trascurabile, non è necessario aggiungere una riga di arrotondamento.'
+                    ) % (extracted_total, self.amount_total, difference),
                     'type': 'success',
                     'sticky': False,
                 }
