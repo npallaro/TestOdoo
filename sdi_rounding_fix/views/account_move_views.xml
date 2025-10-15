@@ -1,58 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <!-- Estensione della vista form delle fatture fornitore -->
+    <!-- Vista form fatture fornitore con pulsanti SDI -->
     <record id="view_move_form_sdi_rounding" model="ir.ui.view">
         <field name="name">account.move.form.sdi.rounding</field>
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             
-            <!-- Aggiungi i pulsanti nella header bar -->
-            <xpath expr="//header" position="inside">
-                <button name="action_add_sdi_rounding_line"
+            <!-- Aggiungi pulsanti nella barra superiore -->
+            <xpath expr="//form/header" position="inside">
+                <button name="action_add_sdi_rounding_line" 
+                        type="object" 
                         string="Aggiungi Arrotondamento SDI"
-                        type="object"
-                        class="btn-primary"
                         invisible="move_type not in ('in_invoice', 'in_refund') or state != 'draft' or has_rounding_line"
-                        help="Estrae automaticamente il totale dal file XML e aggiunge una riga di arrotondamento"/>
+                        class="btn-primary"
+                        help="Estrae automaticamente i totali dal file XML e crea righe di arrotondamento per allineare i totali Odoo"/>
                 
-                <button name="action_remove_sdi_rounding_lines"
+                <button name="action_remove_sdi_rounding_lines" 
+                        type="object" 
                         string="Rimuovi Arrotondamento SDI"
-                        type="object"
-                        class="btn-secondary"
                         invisible="move_type not in ('in_invoice', 'in_refund') or state != 'draft' or not has_rounding_line"
-                        help="Rimuove le righe di arrotondamento SDI dalla fattura"/>
+                        class="btn-secondary"
+                        help="Rimuove tutte le righe di arrotondamento SDI dalla fattura"/>
             </xpath>
             
             <!-- Aggiungi i campi nel tab "Altre Informazioni" -->
             <xpath expr="//notebook/page[@name='other_info']" position="inside">
                 <group name="sdi_rounding_info" string="Informazioni SDI" 
                        invisible="move_type not in ('in_invoice', 'in_refund')">
-                    <group>
+                    <group name="sdi_xml_values" string="Valori XML">
                         <field name="sdi_xml_untaxed" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
+                               decoration-danger="abs(sdi_untaxed_diff) > 0.01"
                                help="Imponibile totale estratto dal file XML"/>
                         <field name="sdi_xml_tax" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
+                               decoration-danger="abs(sdi_tax_diff) > 0.01"
                                help="IVA totale estratta dal file XML"/>
                         <field name="sdi_xml_total" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
-                               help="Totale estratto automaticamente dal file XML. Può essere modificato manualmente se necessario."/>
-                        <field name="sdi_rounding_difference" 
+                               readonly="1"
+                               decoration-danger="abs(sdi_total_diff) > 0.01"
+                               help="Totale calcolato (Imponibile + IVA) dal file XML"/>
+                    </group>
+                    
+                    <group name="sdi_differences" string="Differenze XML vs Odoo">
+                        <field name="sdi_untaxed_diff" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"
                                readonly="1"
-                               decoration-danger="sdi_rounding_difference > 0.01 or sdi_rounding_difference &lt; -0.01"
-                               decoration-success="sdi_rounding_difference &lt;= 0.01 and sdi_rounding_difference >= -0.01"
-                               help="Differenza tra il totale XML e il totale calcolato da Odoo"/>
-                        <field name="has_rounding_line" invisible="1"/>
+                               decoration-danger="abs(sdi_untaxed_diff) > 0.01"
+                               decoration-success="abs(sdi_untaxed_diff) &lt;= 0.01"
+                               help="Differenza tra imponibile XML e Odoo"/>
+                        <field name="sdi_tax_diff" 
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               readonly="1"
+                               decoration-danger="abs(sdi_tax_diff) > 0.01"
+                               decoration-success="abs(sdi_tax_diff) &lt;= 0.01"
+                               help="Differenza tra IVA XML e Odoo"/>
+                        <field name="sdi_total_diff" 
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               readonly="1"
+                               decoration-danger="abs(sdi_total_diff) > 0.01"
+                               decoration-success="abs(sdi_total_diff) &lt;= 0.01"
+                               help="Differenza tra totale XML e Odoo"/>
                     </group>
+                    
+                    <group name="sdi_payment_info" string="Informazioni Pagamento" 
+                           invisible="not sdi_total_to_pay">
+                        <field name="sdi_total_to_pay" 
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               readonly="1"
+                               help="Totale a pagare dal tag ImportoTotaleDocumento"/>
+                        <field name="sdi_gift_transport_diff" 
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               readonly="1"
+                               decoration-danger="abs(sdi_gift_transport_diff) > 0.01"
+                               help="Differenza dovuta a omaggi, trasporti non imponibili, ecc."/>
+                        <field name="sdi_diff_type" 
+                               readonly="1"
+                               invisible="not sdi_diff_type"
+                               help="Tipo di differenza"/>
+                    </group>
+                    
+                    <field name="has_rounding_line" invisible="1"/>
                 </group>
             </xpath>
             
