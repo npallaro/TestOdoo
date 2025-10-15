@@ -30,6 +30,16 @@
                 <group name="sdi_rounding_info" string="Informazioni SDI" 
                        invisible="move_type not in ('in_invoice', 'in_refund')">
                     <group>
+                        <field name="sdi_xml_untaxed" 
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               readonly="1"
+                               help="Imponibile totale estratto dal file XML"/>
+                        <field name="sdi_xml_tax" 
+                               widget="monetary"
+                               options="{'currency_field': 'currency_id'}"
+                               readonly="1"
+                               help="IVA totale estratta dal file XML"/>
                         <field name="sdi_xml_total" 
                                widget="monetary"
                                options="{'currency_field': 'currency_id'}"

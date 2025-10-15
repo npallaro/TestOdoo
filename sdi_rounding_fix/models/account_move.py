@@ -22,6 +22,18 @@ class AccountMove(models.Model):
              'Questo campo viene compilato automaticamente durante l\'estrazione.'
     )
     
+    sdi_xml_untaxed = fields.Monetary(
+        string='Imponibile XML SDI',
+        currency_field='currency_id',
+        help='Imponibile totale estratto dal file XML dello SDI.'
+    )
+    
+    sdi_xml_tax = fields.Monetary(
+        string='IVA XML SDI',
+        currency_field='currency_id',
+        help='IVA totale estratta dal file XML dello SDI.'
+    )
+    
     # Campo calcolato per mostrare la differenza
     sdi_rounding_difference = fields.Monetary(
         string='Differenza Arrotondamento',
@@ -71,10 +83,6 @@ class AccountMove(models.Model):
             
             try:
                 # Usa OpenSSL per estrarre il contenuto del file .p7m
-                # -verify: verifica la firma (ma non fallisce se non può verificare)
-                # -noverify: non verifica i certificati (accetta file anche senza catena di certificati valida)
-                # -in: file di input (.p7m)
-                # -out: file di output (.xml)
                 result = subprocess.run(
                     ['openssl', 'smime', '-verify', '-noverify', '-in', tmp_p7m_path, '-inform', 'DER', '-out', tmp_xml_path],
                     capture_output=True,
@@ -82,7 +90,6 @@ class AccountMove(models.Model):
                     timeout=10
                 )
                 
-                # Anche se la verifica fallisce, il contenuto viene estratto
                 # Leggi il file XML estratto
                 if os.path.exists(tmp_xml_path) and os.path.getsize(tmp_xml_path) > 0:
                     with open(tmp_xml_path, 'rb') as f:
@@ -121,7 +128,6 @@ class AccountMove(models.Model):
         for message in messages:
             if message.body:
                 # Cerca il pattern "Valore totale dal file XML: XXXX.XX"
-                # Supporta vari formati: con virgola, punto, spazi, ecc.
                 patterns = [
                     r'Valore totale dal file XML:\s*([0-9]+[.,][0-9]{2})',
                     r'Totale.*XML.*:\s*([0-9]+[.,][0-9]{2})',
@@ -132,21 +138,20 @@ class AccountMove(models.Model):
                     match = re.search(pattern, message.body, re.IGNORECASE)
                     if match:
                         total_str = match.group(1)
-                        # Sostituisci virgola con punto per conversione
                         total_str = total_str.replace(',', '.')
                         try:
                             total = float(total_str)
                             _logger.info(f"Totale estratto dai messaggi: {total}")
-                            return total
+                            return {'total': total, 'untaxed': None, 'tax': None}
                         except ValueError:
                             _logger.warning(f"Impossibile convertire il totale: {total_str}")
         
         return None
 
-    def _parse_xml_and_extract_total(self, xml_content):
+    def _parse_xml_and_extract_totals(self, xml_content):
         """
-        Parsa il contenuto XML e estrae il totale.
-        Supporta sia il tag ImportoTotaleDocumento che il calcolo dalle righe.
+        Parsa il contenuto XML ed estrae imponibile, IVA e totale.
+        NUOVA LOGICA: Estrae sempre dai DatiRiepilogo (più affidabile) e verifica ImportoTotaleDocumento.
         """
         try:
             import xml.etree.ElementTree as ET
@@ -164,47 +169,101 @@ class AccountMove(models.Model):
                 'p': 'http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2',
             }
             
-            # METODO 1: Cerca il totale documento
-            total_element = None
+            # METODO PRINCIPALE: Estrai da DatiRiepilogo (più affidabile)
+            total_imponibile = Decimal('0.00')
+            total_iva = Decimal('0.00')
             
-            # Prova con namespace
-            total_element = root.find('.//p:ImportoTotaleDocumento', namespaces)
+            # Cerca DatiRiepilogo
+            riepiloghi = []
+            for riepilogo in root.findall('.//p:DatiRiepilogo', namespaces):
+                riepiloghi.append(riepilogo)
             
-            # Prova senza namespace
-            if total_element is None:
-                total_element = root.find('.//ImportoTotaleDocumento')
+            if not riepiloghi:
+                for riepilogo in root.findall('.//DatiRiepilogo'):
+                    riepiloghi.append(riepilogo)
             
-            # Cerca in tutti gli elementi
-            if total_element is None:
+            if not riepiloghi:
                 for elem in root.iter():
-                    if elem.tag.endswith('ImportoTotaleDocumento'):
-                        total_element = elem
-                        break
+                    if elem.tag.endswith('DatiRiepilogo'):
+                        riepiloghi.append(elem)
             
-            if total_element is not None and total_element.text:
-                try:
-                    total_from_tag = float(total_element.text)
-                    _logger.info(f"Totale estratto da ImportoTotaleDocumento: {total_from_tag}")
-                    return total_from_tag
-                except ValueError:
-                    _logger.warning(f"Impossibile convertire il totale: {total_element.text}")
+            if riepiloghi:
+                _logger.info(f"Trovati {len(riepiloghi)} riepiloghi IVA")
+                
+                for riepilogo in riepiloghi:
+                    imponibile_elem = None
+                    imposta_elem = None
+                    
+                    for elem in riepilogo.iter():
+                        if elem.tag.endswith('ImponibileImporto') and elem.text:
+                            imponibile_elem = elem
+                        elif elem.tag.endswith('Imposta') and elem.text:
+                            imposta_elem = elem
+                    
+                    if imponibile_elem is not None:
+                        try:
+                            total_imponibile += Decimal(imponibile_elem.text)
+                        except:
+                            pass
+                    
+                    if imposta_elem is not None:
+                        try:
+                            total_iva += Decimal(imposta_elem.text)
+                        except:
+                            pass
+                
+                _logger.info(f"Imponibile totale da DatiRiepilogo: {total_imponibile}")
+                _logger.info(f"IVA totale da DatiRiepilogo: {total_iva}")
+                
+                # Calcola il totale
+                total_calcolato = total_imponibile + total_iva
+                _logger.info(f"Totale calcolato (Imp + IVA): {total_calcolato}")
+                
+                # Verifica con ImportoTotaleDocumento
+                total_element = None
+                total_element = root.find('.//p:ImportoTotaleDocumento', namespaces)
+                if total_element is None:
+                    total_element = root.find('.//ImportoTotaleDocumento')
+                if total_element is None:
+                    for elem in root.iter():
+                        if elem.tag.endswith('ImportoTotaleDocumento'):
+                            total_element = elem
+                            break
+                
+                if total_element is not None and total_element.text:
+                    try:
+                        total_documento = Decimal(total_element.text)
+                        _logger.info(f"ImportoTotaleDocumento: {total_documento}")
+                        
+                        # Verifica se c'è una discrepanza nel file XML stesso
+                        diff_xml = total_calcolato - total_documento
+                        if abs(diff_xml) > Decimal('0.01'):
+                            _logger.warning(
+                                f"⚠️ ANOMALIA NEL FILE XML: "
+                                f"ImportoTotaleDocumento ({total_documento}) != "
+                                f"Imponibile + IVA ({total_calcolato}). "
+                                f"Differenza: {diff_xml}. "
+                                f"Userò il totale calcolato."
+                            )
+                    except:
+                        pass
+                
+                # Arrotonda a 2 decimali
+                return {
+                    'total': float(total_calcolato.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                    'untaxed': float(total_imponibile.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                    'tax': float(total_iva.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+                }
             
-            # METODO 2: Calcola il totale dalle righe
-            _logger.info("Tag ImportoTotaleDocumento non trovato, calcolo il totale dalle righe...")
+            # FALLBACK: Se non ci sono DatiRiepilogo, calcola dalle righe
+            _logger.info("DatiRiepilogo non trovati, calcolo dalle righe...")
             
-            # Trova tutte le righe fattura
             lines = []
-            
-            # Prova con namespace
             for line in root.findall('.//p:DettaglioLinee', namespaces):
                 lines.append(line)
-            
-            # Prova senza namespace
             if not lines:
                 for line in root.findall('.//DettaglioLinee'):
                     lines.append(line)
-            
-            # Cerca in tutti gli elementi
             if not lines:
                 for elem in root.iter():
                     if elem.tag.endswith('DettaglioLinee'):
@@ -214,11 +273,9 @@ class AccountMove(models.Model):
                 _logger.warning("Nessuna riga fattura trovata nell'XML")
                 return None
             
-            # Calcola il totale imponibile dalle righe
             total_imponibile = Decimal('0.00')
             
             for line in lines:
-                # Cerca PrezzoTotale (importo totale della riga)
                 prezzo_totale = None
                 
                 for elem in line.iter():
@@ -229,7 +286,6 @@ class AccountMove(models.Model):
                         except:
                             pass
                 
-                # Se non c'è PrezzoTotale, calcola da PrezzoUnitario * Quantita
                 if prezzo_totale is None:
                     prezzo_unitario = None
                     quantita = None
@@ -254,70 +310,62 @@ class AccountMove(models.Model):
             
             _logger.info(f"Totale imponibile calcolato dalle righe: {total_imponibile}")
             
-            # Trova i riepiloghi IVA
-            total_iva = Decimal('0.00')
-            
-            # Cerca DatiRiepilogo
-            riepiloghi = []
-            for riepilogo in root.findall('.//p:DatiRiepilogo', namespaces):
-                riepiloghi.append(riepilogo)
-            
-            if not riepiloghi:
-                for riepilogo in root.findall('.//DatiRiepilogo'):
-                    riepiloghi.append(riepilogo)
-            
-            if not riepiloghi:
+            # Cerca il totale documento
+            total_element = root.find('.//p:ImportoTotaleDocumento', namespaces)
+            if total_element is None:
+                total_element = root.find('.//ImportoTotaleDocumento')
+            if total_element is None:
                 for elem in root.iter():
-                    if elem.tag.endswith('DatiRiepilogo'):
-                        riepiloghi.append(elem)
+                    if elem.tag.endswith('ImportoTotaleDocumento'):
+                        total_element = elem
+                        break
             
-            for riepilogo in riepiloghi:
-                for elem in riepilogo.iter():
-                    if elem.tag.endswith('Imposta') and elem.text:
-                        try:
-                            total_iva += Decimal(elem.text)
-                        except:
-                            pass
+            if total_element is not None and total_element.text:
+                try:
+                    total_documento = Decimal(total_element.text)
+                    total_iva = total_documento - total_imponibile
+                    
+                    return {
+                        'total': float(total_documento.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                        'untaxed': float(total_imponibile.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
+                        'tax': float(total_iva.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+                    }
+                except:
+                    pass
             
-            _logger.info(f"Totale IVA calcolato: {total_iva}")
-            
-            # Calcola il totale finale
-            total_finale = total_imponibile + total_iva
-            
-            # Arrotonda a 2 decimali
-            total_finale = float(total_finale.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
-            
-            _logger.info(f"Totale finale calcolato: {total_finale}")
-            
-            return total_finale
+            return None
             
         except Exception as e:
             _logger.error(f"Errore nel parsing dell'XML: {e}", exc_info=True)
         
         return None
 
-    def _extract_xml_total_from_attachment(self):
+    def _extract_xml_totals_from_attachment(self):
         """
-        Estrae il totale dal file XML allegato alla fattura.
+        Estrae imponibile, IVA e totale dal file XML allegato alla fattura.
         Gestisce file .xml e .p7m (firmati digitalmente).
         """
         self.ensure_one()
         
-        # METODO 1: Cerca nei messaggi (più veloce e affidabile)
-        total_from_messages = self._extract_total_from_messages()
-        if total_from_messages:
-            return total_from_messages
+        # METODO 1: Cerca nei messaggi (più veloce)
+        totals_from_messages = self._extract_total_from_messages()
+        if totals_from_messages and totals_from_messages.get('total'):
+            # Dai messaggi abbiamo solo il totale, non imponibile e IVA
+            # Proviamo comunque a leggere il file per avere i dettagli
+            pass
         
         # METODO 2: Leggi direttamente dai file allegati
-        _logger.info("Totale non trovato nei messaggi, provo a leggere i file allegati...")
+        _logger.info("Provo a leggere i file allegati per estrarre i dettagli...")
         
-        # Cerca allegati XML (.xml e .p7m)
         xml_attachments = self.attachment_ids.filtered(
             lambda a: a.name.endswith('.xml') or a.name.endswith('.p7m')
         )
         
         if not xml_attachments:
             _logger.warning("Nessun file XML o .p7m trovato negli allegati")
+            # Se abbiamo il totale dai messaggi, restituiscilo
+            if totals_from_messages:
+                return totals_from_messages
             return None
         
         # Prova con ogni allegato trovato
@@ -325,7 +373,6 @@ class AccountMove(models.Model):
             _logger.info(f"Provo a leggere il file: {attachment.name}")
             
             try:
-                # Leggi il contenuto dell'allegato
                 file_content = attachment.raw
                 xml_content = None
                 
@@ -337,25 +384,27 @@ class AccountMove(models.Model):
                         _logger.warning(f"Impossibile decifrare il file .p7m: {attachment.name}")
                         continue
                 else:
-                    # È già un file .xml
                     xml_content = file_content
                 
-                # Parsa l'XML ed estrai il totale
-                total = self._parse_xml_and_extract_total(xml_content)
-                if total:
-                    return total
+                # Parsa l'XML ed estrai i totali
+                totals = self._parse_xml_and_extract_totals(xml_content)
+                if totals:
+                    return totals
                     
             except Exception as e:
                 _logger.error(f"Errore durante l'elaborazione del file {attachment.name}: {e}", exc_info=True)
                 continue
         
+        # Se non abbiamo trovato nulla nei file ma abbiamo il totale dai messaggi
+        if totals_from_messages:
+            return totals_from_messages
+        
         return None
 
     def action_add_sdi_rounding_line(self):
         """
-        Estrae automaticamente il totale dal file XML e aggiunge una riga di arrotondamento
+        Estrae automaticamente imponibile, IVA e totale dal file XML e aggiunge una riga di arrotondamento
         per bilanciare la differenza tra il totale XML SDI e il totale calcolato da Odoo.
-        Tutto in un solo click!
         """
         self.ensure_one()
         
@@ -379,10 +428,10 @@ class AccountMove(models.Model):
                 'Rimuoverla prima di crearne una nuova.'
             ))
         
-        # ESTRAZIONE AUTOMATICA DEL TOTALE XML
-        extracted_total = self._extract_xml_total_from_attachment()
+        # ESTRAZIONE AUTOMATICA DEI TOTALI XML
+        extracted_totals = self._extract_xml_totals_from_attachment()
         
-        if not extracted_total:
+        if not extracted_totals or not extracted_totals.get('total'):
             raise UserError(_(
                 'Non è stato possibile estrarre il totale dal file XML.\n\n'
                 'Verificare che:\n'
@@ -393,25 +442,36 @@ class AccountMove(models.Model):
                 '"Totale XML SDI" nel tab "Altre Informazioni" e riprovare.'
             ))
         
-        # Salva il totale estratto
-        self.sdi_xml_total = extracted_total
+        # Salva i totali estratti
+        self.sdi_xml_total = extracted_totals['total']
+        self.sdi_xml_untaxed = extracted_totals.get('untaxed', 0.0)
+        self.sdi_xml_tax = extracted_totals.get('tax', 0.0)
         
-        # Calcola la differenza
-        difference = self.sdi_rounding_difference
+        # Calcola le differenze
+        diff_total = self.sdi_xml_total - self.amount_total
+        diff_untaxed = self.sdi_xml_untaxed - self.amount_untaxed if self.sdi_xml_untaxed else 0.0
+        diff_tax = self.sdi_xml_tax - self.amount_tax if self.sdi_xml_tax else 0.0
+        
+        _logger.info(f"Differenze: Totale={diff_total}, Imponibile={diff_untaxed}, IVA={diff_tax}")
         
         # Se la differenza è zero o trascurabile, non fare nulla
-        if abs(difference) < 0.01:
+        if abs(diff_total) < 0.01:
+            message = _('Totale XML: %.2f €\nTotale Odoo: %.2f €\nDifferenza: %.2f €\n\n'
+                       'La differenza è trascurabile, non è necessario aggiungere una riga di arrotondamento.') % (
+                self.sdi_xml_total, self.amount_total, diff_total)
+            
+            if self.sdi_xml_untaxed and self.sdi_xml_tax:
+                message += _('\n\nDettagli:\nImponibile XML: %.2f € | Odoo: %.2f € | Diff: %.2f €\n'
+                           'IVA XML: %.2f € | Odoo: %.2f € | Diff: %.2f €') % (
+                    self.sdi_xml_untaxed, self.amount_untaxed, diff_untaxed,
+                    self.sdi_xml_tax, self.amount_tax, diff_tax)
+            
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
                     'title': _('✓ Nessun Arrotondamento Necessario'),
-                    'message': _(
-                        'Totale XML: %.2f €\n'
-                        'Totale Odoo: %.2f €\n'
-                        'Differenza: %.2f €\n\n'
-                        'La differenza è trascurabile, non è necessario aggiungere una riga di arrotondamento.'
-                    ) % (extracted_total, self.amount_total, difference),
+                    'message': message,
                     'type': 'success',
                     'sticky': False,
                 }
@@ -422,7 +482,6 @@ class AccountMove(models.Model):
             ('default_code', '=', 'SDI_ROUNDING')
         ], limit=1)
         
-        # Se non esiste, crealo
         if not rounding_product:
             rounding_product = self._create_rounding_product()
         
@@ -437,18 +496,31 @@ class AccountMove(models.Model):
             ))
         
         # Crea la riga di arrotondamento
+        # La differenza totale include già l'IVA, quindi usiamo quella
         self.env['account.move.line'].create({
             'move_id': self.id,
             'product_id': rounding_product.id,
             'name': f'Arrotondamento SDI - Differenza fattura elettronica',
             'account_id': account.id,
             'quantity': 1,
-            'price_unit': difference,
+            'price_unit': diff_total,
             'tax_ids': [(5, 0, 0)],  # Nessuna tassa
         })
         
         # Ricalcola i totali della fattura
         self.invalidate_recordset(['amount_total', 'amount_untaxed', 'amount_tax'])
+        
+        # Prepara il messaggio di conferma
+        message = _('Totale XML estratto: %.2f €\nTotale Odoo precedente: %.2f €\n'
+                   'Riga di arrotondamento aggiunta: %.2f €\n\n'
+                   'Il totale della fattura ora corrisponde al file XML!') % (
+            self.sdi_xml_total, self.sdi_xml_total - diff_total, diff_total)
+        
+        if self.sdi_xml_untaxed and self.sdi_xml_tax:
+            message += _('\n\nDettagli XML:\nImponibile: %.2f € (Odoo: %.2f € | Diff: %.2f €)\n'
+                       'IVA: %.2f € (Odoo: %.2f € | Diff: %.2f €)') % (
+                self.sdi_xml_untaxed, self.amount_untaxed, diff_untaxed,
+                self.sdi_xml_tax, self.amount_tax, diff_tax)
         
         # Mostra notifica e ricarica la vista
         return {
@@ -456,12 +528,7 @@ class AccountMove(models.Model):
             'tag': 'display_notification',
             'params': {
                 'title': _('✓ Arrotondamento Completato'),
-                'message': _(
-                    'Totale XML estratto: %.2f €\n'
-                    'Totale Odoo precedente: %.2f €\n'
-                    'Riga di arrotondamento aggiunta: %.2f €\n\n'
-                    'Il totale della fattura ora corrisponde al file XML!'
-                ) % (extracted_total, extracted_total - difference, difference),
+                'message': message,
                 'type': 'success',
                 'sticky': True,
                 'next': {'type': 'ir.actions.act_window_close'},
@@ -471,7 +538,6 @@ class AccountMove(models.Model):
     def _create_rounding_product(self):
         """Crea il prodotto per le righe di arrotondamento SDI"""
         
-        # Cerca la categoria "Spese" o crea una categoria specifica
         expense_categ = self.env['product.category'].search([
             ('name', 'ilike', 'spese')
         ], limit=1)
@@ -479,7 +545,6 @@ class AccountMove(models.Model):
         if not expense_categ:
             expense_categ = self.env['product.category'].search([], limit=1)
         
-        # Crea il prodotto
         product = self.env['product.product'].create({
             'name': 'Arrotondamento Fatture Elettroniche SDI',
             'default_code': 'SDI_ROUNDING',
@@ -499,24 +564,21 @@ class AccountMove(models.Model):
         result = super(AccountMove, self).write(vals)
         
         # Se vengono aggiunti allegati, potrebbe essere un'importazione di fattura elettronica
-        # Verifica se serve l'arrotondamento automatico
         if 'attachment_ids' in vals or 'invoice_line_ids' in vals:
             for move in self:
-                # Se è una fattura fornitore in bozza e non ha già una riga di arrotondamento
                 if move.move_type in ('in_invoice', 'in_refund') and move.state == 'draft' and not move.has_rounding_line:
-                    # Usa un try-except per non bloccare il salvataggio
                     try:
-                        # Verifica se c'è una differenza significativa
-                        extracted_total = move._extract_xml_total_from_attachment()
-                        if extracted_total and not move.sdi_xml_total:
-                            move.sdi_xml_total = extracted_total
-                            difference = extracted_total - move.amount_total
+                        extracted_totals = move._extract_xml_totals_from_attachment()
+                        if extracted_totals and extracted_totals.get('total') and not move.sdi_xml_total:
+                            move.sdi_xml_total = extracted_totals['total']
+                            move.sdi_xml_untaxed = extracted_totals.get('untaxed', 0.0)
+                            move.sdi_xml_tax = extracted_totals.get('tax', 0.0)
                             
-                            # Se c'è una differenza significativa, aggiungi automaticamente l'arrotondamento
+                            difference = move.sdi_xml_total - move.amount_total
+                            
                             if abs(difference) >= 0.01:
                                 _logger.info(f"Fattura {move.name}: rilevata differenza di {difference} €, aggiungo arrotondamento automatico")
                                 
-                                # Cerca il prodotto di arrotondamento
                                 rounding_product = self.env['product.product'].search([
                                     ('default_code', '=', 'SDI_ROUNDING')
                                 ], limit=1)
@@ -528,7 +590,6 @@ class AccountMove(models.Model):
                                           rounding_product.categ_id.property_account_expense_categ_id
                                 
                                 if account:
-                                    # Crea la riga di arrotondamento
                                     self.env['account.move.line'].with_context(check_move_validity=False).create({
                                         'move_id': move.id,
                                         'product_id': rounding_product.id,
@@ -539,20 +600,22 @@ class AccountMove(models.Model):
                                         'tax_ids': [(5, 0, 0)],
                                     })
                                     
-                                    # Ricalcola i totali
                                     move.invalidate_recordset(['amount_total', 'amount_untaxed', 'amount_tax'])
                                     
-                                    # Aggiungi un messaggio nel chatter
-                                    move.message_post(
-                                        body=f"<p>✓ Arrotondamento SDI aggiunto automaticamente</p>"
-                                             f"<ul>"
-                                             f"<li>Totale XML: {extracted_total:.2f} €</li>"
-                                             f"<li>Totale Odoo precedente: {extracted_total - difference:.2f} €</li>"
-                                             f"<li>Arrotondamento applicato: {difference:.2f} €</li>"
-                                             f"</ul>"
-                                    )
+                                    diff_untaxed = move.sdi_xml_untaxed - move.amount_untaxed if move.sdi_xml_untaxed else 0.0
+                                    diff_tax = move.sdi_xml_tax - move.amount_tax if move.sdi_xml_tax else 0.0
+                                    
+                                    body = f"<p>✓ Arrotondamento SDI aggiunto automaticamente</p><ul>"
+                                    body += f"<li>Totale XML: {move.sdi_xml_total:.2f} €</li>"
+                                    body += f"<li>Totale Odoo precedente: {move.sdi_xml_total - difference:.2f} €</li>"
+                                    body += f"<li>Arrotondamento applicato: {difference:.2f} €</li>"
+                                    if move.sdi_xml_untaxed and move.sdi_xml_tax:
+                                        body += f"<li>Imponibile XML: {move.sdi_xml_untaxed:.2f} € (Odoo: {move.amount_untaxed:.2f} € | Diff: {diff_untaxed:.2f} €)</li>"
+                                        body += f"<li>IVA XML: {move.sdi_xml_tax:.2f} € (Odoo: {move.amount_tax:.2f} € | Diff: {diff_tax:.2f} €)</li>"
+                                    body += "</ul>"
+                                    
+                                    move.message_post(body=body)
                     except Exception as e:
-                        # Log l'errore ma non bloccare il salvataggio
                         _logger.warning(f"Impossibile aggiungere arrotondamento automatico alla fattura {move.name}: {e}")
         
         return result
@@ -567,7 +630,6 @@ class AccountMove(models.Model):
                 'le righe di arrotondamento.'
             ))
         
-        # Trova e rimuovi le righe di arrotondamento
         rounding_lines = self.invoice_line_ids.filtered(
             lambda l: l.name and 'Arrotondamento SDI' in l.name
         )
@@ -577,8 +639,10 @@ class AccountMove(models.Model):
         
         rounding_lines.unlink()
         
-        # Resetta anche il campo totale XML
+        # Resetta anche i campi totale XML
         self.sdi_xml_total = 0.0
+        self.sdi_xml_untaxed = 0.0
+        self.sdi_xml_tax = 0.0
         
         # Ricalcola i totali della fattura
         self.invalidate_recordset(['amount_total', 'amount_untaxed', 'amount_tax'])
@@ -588,7 +652,7 @@ class AccountMove(models.Model):
             'tag': 'display_notification',
             'params': {
                 'title': _('Righe di Arrotondamento Rimosse'),
-                'message': _('Le righe di arrotondamento sono state rimosse e il campo "Totale XML SDI" è stato azzerato.'),
+                'message': _('Le righe di arrotondamento sono state rimosse e i campi XML sono stati azzerati.'),
                 'type': 'info',
                 'sticky': False,
             }
