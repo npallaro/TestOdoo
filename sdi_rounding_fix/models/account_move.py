@@ -3,6 +3,7 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 import logging
+import re
 
 _logger = logging.getLogger(__name__)
 
@@ -51,21 +52,61 @@ class AccountMove(models.Model):
                 for line in move.invoice_line_ids
             )
 
-    def _extract_xml_total_from_attachment(self):
+    def _extract_total_from_messages(self):
         """
-        Estrae il totale dal file XML allegato alla fattura.
-        Metodo 1: Legge il tag <ImportoTotaleDocumento>
-        Metodo 2: Calcola il totale dalle righe fattura + IVA
+        Estrae il totale dai messaggi/chatter della fattura.
+        Odoo scrive "Valore totale dal file XML: XXXX.XX" quando importa la fattura.
         """
         self.ensure_one()
         
-        # Cerca allegati XML
+        # Cerca nei messaggi della fattura
+        messages = self.message_ids
+        
+        for message in messages:
+            if message.body:
+                # Cerca il pattern "Valore totale dal file XML: XXXX.XX"
+                # Supporta vari formati: con virgola, punto, spazi, ecc.
+                patterns = [
+                    r'Valore totale dal file XML:\s*([0-9]+[.,][0-9]{2})',
+                    r'Totale.*XML.*:\s*([0-9]+[.,][0-9]{2})',
+                    r'ImportoTotaleDocumento.*:\s*([0-9]+[.,][0-9]{2})',
+                ]
+                
+                for pattern in patterns:
+                    match = re.search(pattern, message.body, re.IGNORECASE)
+                    if match:
+                        total_str = match.group(1)
+                        # Sostituisci virgola con punto per conversione
+                        total_str = total_str.replace(',', '.')
+                        try:
+                            total = float(total_str)
+                            _logger.info(f"Totale estratto dai messaggi: {total}")
+                            return total
+                        except ValueError:
+                            _logger.warning(f"Impossibile convertire il totale: {total_str}")
+        
+        return None
+
+    def _extract_xml_total_from_attachment(self):
+        """
+        Estrae il totale dal file XML allegato alla fattura.
+        Gestisce file .xml e .p7m (firmati digitalmente).
+        """
+        self.ensure_one()
+        
+        # Prima prova a estrarre dai messaggi (più affidabile per file .p7m)
+        total_from_messages = self._extract_total_from_messages()
+        if total_from_messages:
+            return total_from_messages
+        
+        # Se non trovato nei messaggi, prova a leggere il file XML direttamente
+        # Cerca allegati XML (solo .xml, non .p7m che sono firmati)
         xml_attachments = self.attachment_ids.filtered(
-            lambda a: a.name.endswith('.xml') or 'xml' in a.name.lower()
+            lambda a: a.name.endswith('.xml') and not a.name.endswith('.p7m')
         )
         
         if not xml_attachments:
-            _logger.warning("Nessun file XML trovato negli allegati")
+            _logger.info("Nessun file XML non firmato trovato, il totale dovrebbe essere nei messaggi")
             return None
         
         # Prendi il primo allegato XML
@@ -255,12 +296,13 @@ class AccountMove(models.Model):
         
         if not extracted_total:
             raise UserError(_(
-                'Non è stato possibile estrarre il totale dal file XML allegato.\n\n'
+                'Non è stato possibile estrarre il totale dal file XML.\n\n'
                 'Verificare che:\n'
-                '• Il file XML (.xml o .p7m) sia allegato alla fattura\n'
-                '• Il file sia in formato FatturaPA valido\n'
-                '• Il file contenga le righe fattura o i riepiloghi IVA\n\n'
-                'Dettagli tecnici disponibili nei log del sistema.'
+                '• La fattura sia stata importata tramite il sistema di fatturazione elettronica\n'
+                '• Il file XML sia allegato alla fattura\n'
+                '• Nei messaggi della fattura sia presente il "Valore totale dal file XML"\n\n'
+                'Se la fattura è stata creata manualmente, inserire il totale XML manualmente '
+                'nel campo "Totale XML SDI" nel tab "Altre Informazioni".'
             ))
         
         # Salva il totale estratto
