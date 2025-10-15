@@ -1,160 +1,131 @@
-# SDI Rounding Fix - Gestione Arrotondamenti Fatture Elettroniche
+# SDI Rounding Fix - Modulo Odoo 18
 
 ## Descrizione
 
-Modulo **completo e autonomo** per risolvere automaticamente il problema delle discrepanze di totale nelle fatture elettroniche importate dallo SDI italiano.
+Modulo per Odoo 18 Enterprise che risolve i problemi di arrotondamento nelle fatture elettroniche importate dallo SDI (Sistema di Interscambio italiano).
 
 ## Il Problema
 
-Quando si importano fatture elettroniche dallo SDI, può capitare che il totale della fattura nel file XML sia diverso dal totale calcolato da Odoo:
-
-- I fornitori usano prezzi unitari con **fino a 8 cifre decimali** nel file XML
-- Odoo arrotonda i prezzi unitari a **2 cifre decimali**
-- Questa differenza, moltiplicata per grandi quantità, genera **discrepanze significative** nei totali
-
-**Esempio reale**: Prezzo unitario XML `0.00886292` → Odoo `0.01` → su 24.000 pezzi = **€ 27,29 di differenza**!
+Le fatture elettroniche italiane possono contenere prezzi unitari con molte cifre decimali, mentre Odoo utilizza 2 cifre decimali. Questo causa discrepanze tra:
+- Il totale calcolato da Odoo
+- Il totale indicato nel file XML della fattura elettronica
 
 ## La Soluzione
 
-Un **pulsante intelligente** che fa tutto automaticamente:
+Questo modulo:
 
-1. ✅ **Estrae il totale** dal file XML (anche .p7m firmati digitalmente)
-2. ✅ **Calcola la differenza** tra XML e Odoo
-3. ✅ **Crea automaticamente** una riga di arrotondamento
+1. **Estrae automaticamente** i totali dal file XML (.xml o .p7m firmato)
+2. **Crea righe di arrotondamento** (una per ogni aliquota IVA) per allineare i totali
+3. **Mostra campi informativi** per evidenziare omaggi, trasporti e altre differenze
+4. **Evidenzia in rosso** tutte le discrepanze per alert visivo immediato
 
-**Tutto in un solo click!** 🚀
+## Caratteristiche Principali
 
-## Funzionalità Avanzate
+### ✅ Logica Corretta
 
-### Supporto File .p7m (Firmati Digitalmente)
+- **NON modifica mai** i totali Odoo manualmente
+- **Crea righe di arrotondamento** con IVA corretta per ogni aliquota
+- **Odoo ricalcola automaticamente** imponibile, IVA e totale
+- **Rispetta completamente** la logica contabile di Odoo
 
-Il modulo **decifra automaticamente** i file .p7m usando OpenSSL:
-- Estrae il contenuto XML dai file firmati
-- Funziona anche se la verifica della firma fallisce
-- Gestione sicura con file temporanei
+### 📊 Campi Informativi (Non Contabili)
 
-### Estrazione Intelligente Multi-Livello
+Nel tab "Altre Informazioni" della fattura fornitore:
 
-Il modulo prova **5 metodi** in sequenza fino a trovare il totale:
+**Sezione "Valori XML":**
+- Imponibile XML SDI
+- IVA XML SDI
+- Totale XML SDI
 
-1. **Messaggi/Chatter**: Legge "Valore totale dal file XML: XXX" (più veloce)
-2. **File .p7m**: Decifra con OpenSSL ed estrae l'XML
-3. **File .xml**: Legge direttamente i file XML non firmati
-4. **Tag XML**: Cerca `<ImportoTotaleDocumento>`
-5. **Calcolo**: Somma righe + IVA se il tag non c'è
+**Sezione "Differenze XML vs Odoo":**
+- Diff. Imponibile (rosso se > 0,01 €, verde se OK)
+- Diff. IVA (rosso se > 0,01 €, verde se OK)
+- Diff. Totale (rosso se > 0,01 €, verde se OK)
 
-### Calcolo Automatico dalle Righe
+**Sezione "Informazioni Pagamento":**
+- Totale a Pagare SDI (da ImportoTotaleDocumento)
+- Diff. Omaggi/Trasporti (in rosso se presente)
+- Tipo Differenza (es. "Omaggi/Trasporti non imponibili")
 
-Se il tag `<ImportoTotaleDocumento>` non è presente:
-- Estrae tutte le righe `<DettaglioLinee>`
-- Somma i `<PrezzoTotale>` (o calcola `PrezzoUnitario × Quantità`)
-- Estrae l'IVA dai `<DatiRiepilogo>`
-- Calcola: **Totale = Imponibile + IVA**
+### 🔧 Funzionalità
 
-## Utilizzo
+**Pulsante "Aggiungi Arrotondamento SDI":**
+- Estrae automaticamente i riepiloghi IVA dal file XML
+- Calcola la differenza per ogni aliquota IVA
+- Crea una riga di arrotondamento per ogni aliquota
+- Applica l'IVA corretta a ogni riga
+- Odoo ricalcola automaticamente i totali
 
-### Procedura Semplificata (2 passi)
+**Pulsante "Rimuovi Arrotondamento SDI":**
+- Rimuove tutte le righe di arrotondamento
+- Resetta i campi informativi
 
-1. Aprire la fattura fornitore in bozza
-2. Cliccare **"Aggiungi Arrotondamento SDI"**
-
-**Fatto!** Il sistema fa tutto automaticamente.
-
-### Cosa Succede
-
-Il pulsante:
-- Cerca il file XML/p7m allegato
-- Lo decifra se necessario (file .p7m)
-- Estrae il totale con uno dei 5 metodi
-- Calcola la differenza
-- Crea la riga di arrotondamento
-- Mostra un messaggio di conferma
+## Come Funziona
 
 ### Esempio Pratico
 
-**Scenario**: Fattura XML totale € 3.220,21 ma Odoo calcola € 3.255,07
+**Dati XML:**
+- Imponibile: 16.911,73 €
+- IVA: 3.605,03 €
+- Totale: 20.516,76 €
+- Totale a pagare: 19.991,54 € (omaggi: 525,22 €)
 
-1. Importare la fattura
-2. Cliccare "Aggiungi Arrotondamento SDI"
-3. ✓ Messaggio:
-   ```
-   ✓ Arrotondamento Completato
-   
-   Totale XML estratto: 3.220,21 €
-   Totale Odoo precedente: 3.255,07 €
-   Riga di arrotondamento aggiunta: -34,86 €
-   
-   Il totale della fattura ora corrisponde al file XML!
-   ```
+**Riepiloghi IVA XML:**
+- IVA 22%: Imp 16.386,51 € | IVA 3.605,03 €
+- IVA 0%: Imp 525,22 € | IVA 0,00 €
 
-## Installazione su Odoo.sh
+**Odoo prima dell'arrotondamento:**
+- Imponibile: 16.880,00 €
+- IVA: 3.599,20 €
+- Totale: 20.479,20 €
 
-1. Il modulo è già nel repository GitHub
-2. Attendere che Odoo.sh aggiorni il branch (1-2 minuti)
-3. **App** → **Aggiorna Lista App**
-4. Cercare "SDI Rounding Fix" → **Installa**
+**Righe create dal modulo:**
+1. Arrotondamento SDI - IVA 22%: 26,51 € (con IVA 22%)
+2. Arrotondamento SDI - IVA 0%: 5,22 € (senza IVA)
 
-## Aggiornamento
+**Odoo dopo l'arrotondamento:**
+- Imponibile: 16.911,73 € ✓
+- IVA: 3.605,03 € ✓
+- Totale: 20.516,76 € ✓
 
-Dopo ogni modifica al codice:
-1. Attendere che Odoo.sh aggiorni il branch
-2. **App** → Cercare "SDI Rounding Fix" → **Aggiorna**
+**Campi informativi:**
+- Totale a pagare SDI: 19.991,54 € (in rosso)
+- Diff. omaggi/trasporti: 525,22 € (in rosso)
+- Tipo: "Omaggi/Trasporti non imponibili"
 
-## Requisiti Tecnici
+## Installazione
 
-- Odoo 18.0 Enterprise o Community
-- Moduli: `account`, `l10n_it`, `l10n_it_edi`
-- OpenSSL (già presente in Odoo.sh)
+### Su Odoo.sh
 
-## Vantaggi
+1. Il modulo è già disponibile nel repository GitHub
+2. Odoo.sh rileverà automaticamente il modulo
+3. Andare su **App** → **Aggiorna Lista App**
+4. Cercare "SDI Rounding Fix"
+5. Cliccare su **Installa**
+6. Dopo l'installazione, cliccare su **Aggiorna** per creare i nuovi campi nel database
 
-- ⚡ **Veloce**: Un solo click
-- 🤖 **Automatico**: Nessun input manuale
-- 🔓 **Decifra .p7m**: Supporto completo file firmati
-- 🎯 **Preciso**: Estrae dal file XML ufficiale
-- 🧮 **Intelligente**: Calcola anche senza tag totale
-- 🔒 **Sicuro**: Controlli e validazioni integrate
-- 📊 **Trasparente**: Mostra tutti i dettagli
+### Requisiti
 
-## Controlli di Sicurezza
+- Odoo 18 Enterprise
+- OpenSSL (già disponibile su Odoo.sh)
+- Modulo `account` installato
 
-- ✓ Solo fatture fornitore (non cliente)
-- ✓ Solo fatture in bozza
-- ✓ Impedisce righe duplicate
-- ✓ Non crea arrotondamenti se differenza < 0.01 €
-- ✓ Verifica file allegati validi
+## Utilizzo
 
-## Risoluzione Problemi
+### Fatture Importate dallo SDI
 
-### "Non è stato possibile estrarre il totale"
+1. Importare la fattura dallo SDI come di consueto
+2. Aprire la fattura in bozza
+3. Verificare il tab "Altre Informazioni" → "Informazioni SDI"
+4. Se ci sono differenze (in rosso), cliccare su **"Aggiungi Arrotondamento SDI"**
+5. Il sistema crea automaticamente le righe di arrotondamento
+6. Verificare che le differenze siano ora a zero (in verde)
+7. Confermare la fattura
 
-**Soluzioni**:
-1. Verificare che il file .xml o .p7m sia allegato
-2. Verificare che sia in formato FatturaPA valido
-3. Inserire manualmente il totale nel campo "Totale XML SDI"
+## Autore
 
-### Il pulsante non appare
-
-**Verificare**:
-- Fattura di tipo **Fornitore** (non Cliente)
-- Fattura in stato **Bozza**
-- Non esiste già una riga di arrotondamento
+Sviluppato per risolvere problemi di arrotondamento nelle fatture elettroniche italiane in Odoo 18 Enterprise.
 
 ## Licenza
 
-LGPL-3
-
-## Changelog
-
-### v2.0.0 (Corrente)
-- 🎉 **Decifrazione file .p7m con OpenSSL**
-- 🎉 **Estrazione multi-livello (5 metodi)**
-- 🎉 **Calcolo automatico dalle righe XML**
-- ✨ Estrazione dai messaggi/chatter
-- ✨ Gestione file temporanei sicura
-- 🐛 Risolti tutti gli errori di parsing
-
-### v1.0.0
-- ✓ Versione iniziale
-- ✓ Estrazione base da file XML
-
+Proprietario
