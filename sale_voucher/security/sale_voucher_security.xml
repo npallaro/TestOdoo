@@ -4,48 +4,36 @@
 
         <!-- Categories -->
         <record id="module_category_voucher" model="ir.module.category">
-            <field name="name">Sales Voucher</field>
+            <field name="name">Vouchers</field>
             <field name="description">Manage access rights for sales vouchers</field>
             <field name="sequence">10</field>
         </record>
 
         <!-- Groups -->
+        
+        <!-- User: Can create and manage own vouchers -->
         <record id="group_voucher_user" model="res.groups">
             <field name="name">User</field>
             <field name="category_id" ref="module_category_voucher"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
-            <field name="comment">Can create and view vouchers</field>
+            <field name="comment">Can create and manage own vouchers and team vouchers</field>
         </record>
 
+        <!-- Manager: Full access to all vouchers including archived -->
         <record id="group_voucher_manager" model="res.groups">
             <field name="name">Manager</field>
             <field name="category_id" ref="module_category_voucher"/>
-            <field name="implied_ids" eval="[(4, ref('group_voucher_user')), (4, ref('sales_team.group_sale_salesman_all_leads'))]"/>
-            <field name="comment">Can create invoices from vouchers and access all reports</field>
-        </record>
-
-        <record id="group_voucher_admin" model="res.groups">
-            <field name="name">Administrator</field>
-            <field name="category_id" ref="module_category_voucher"/>
-            <field name="implied_ids" eval="[(4, ref('group_voucher_manager')), (4, ref('sales_team.group_sale_manager'))]"/>
-            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
-            <field name="comment">Full access including deletion, configuration and archived vouchers</field>
-        </record>
-        
-        <record id="group_voucher_see_archived" model="res.groups">
-            <field name="name">See Archived Vouchers</field>
-            <field name="category_id" ref="module_category_voucher"/>
-            <field name="implied_ids" eval="[(4, ref('group_voucher_manager'))]"/>
-            <field name="comment">Can see archived (fully invoiced) vouchers</field>
+            <field name="implied_ids" eval="[(4, ref('group_voucher_user'))]"/>
+            <field name="comment">Full access to all vouchers including archived ones</field>
         </record>
 
         <!-- Record Rules -->
         
-        <!-- Voucher User: own vouchers and team vouchers -->
+        <!-- User: Own vouchers and team vouchers (active only) -->
         <record id="sale_voucher_rule_user" model="ir.rule">
-            <field name="name">Voucher User: Own and Team Vouchers</field>
+            <field name="name">Voucher User: Own and Team Vouchers (Active)</field>
             <field name="model_id" ref="model_sale_voucher"/>
             <field name="domain_force">[
+                ('active', '=', True),
                 '|',
                     ('user_id', '=', user.id),
                     ('user_id.sale_team_id', '=', user.sale_team_id.id)
@@ -53,9 +41,9 @@
             <field name="groups" eval="[(4, ref('group_voucher_user'))]"/>
         </record>
 
-        <!-- Voucher Manager: all vouchers -->
+        <!-- Manager: All vouchers including archived -->
         <record id="sale_voucher_rule_manager" model="ir.rule">
-            <field name="name">Voucher Manager: All Vouchers</field>
+            <field name="name">Voucher Manager: All Vouchers (Including Archived)</field>
             <field name="model_id" ref="model_sale_voucher"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('group_voucher_manager'))]"/>

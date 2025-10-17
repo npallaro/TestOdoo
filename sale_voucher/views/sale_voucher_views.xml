@@ -23,7 +23,7 @@
                        decoration-warning="state in ('confirmed','delivered')"
                        decoration-success="state=='invoiced'"
                        decoration-muted="state=='cancelled'"/>
-                <field name="invoiced_to_id" optional="show"/>
+                <field name="invoiced_to_id" optional="show" groups="sale_voucher.group_voucher_manager"/>
                 <field name="company_id" groups="base.group_multi_company" optional="show"/>
             </list>
         </field>
@@ -42,9 +42,9 @@
                     <button name="action_view_picking" string="View Delivery" type="object" 
                             class="oe_highlight" invisible="not picking_id or state == 'draft'"/>
                     <button name="action_create_invoice" string="Create Invoice" type="object" 
-                            class="oe_highlight" invisible="state != 'delivered'"/>
+                            class="oe_highlight" invisible="state != 'delivered'" groups="sale_voucher.group_voucher_manager"/>
                     <button name="action_view_invoice" string="View Invoice" type="object" 
-                            invisible="not invoice_id"/>
+                            invisible="not invoice_id" groups="sale_voucher.group_voucher_manager"/>
                     <button name="action_cancel" string="Cancel" type="object" 
                             invisible="state in ('invoiced', 'cancelled')"/>
                     <button name="action_draft" string="Reset to Draft" type="object" 
@@ -62,7 +62,8 @@
                         </button>
                         <button name="action_view_invoice" type="object" 
                                 class="oe_stat_button" icon="fa-file-text-o" 
-                                invisible="invoice_count == 0">
+                                invisible="invoice_count == 0"
+                                groups="sale_voucher.group_voucher_manager">
                             <field name="invoice_count" widget="statinfo" string="Invoices"/>
                         </button>
                     </div>
@@ -86,7 +87,7 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
-                    <group invisible="state == 'invoiced'">
+                    <group invisible="state == 'invoiced'" groups="sale_voucher.group_voucher_manager">
                         <group>
                             <field name="invoiced_to_id" readonly="1"/>
                         </group>
@@ -114,7 +115,7 @@
                                 <field name="currency_id" invisible="1"/>
                             </group>
                         </page>
-                        <page string="Other Info">
+                        <page string="Other Info" groups="sale_voucher.group_voucher_manager">
                             <group>
                                 <group string="Delivery">
                                     <field name="picking_id" readonly="1"/>

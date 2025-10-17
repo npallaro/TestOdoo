@@ -113,7 +113,8 @@
               name="To Invoice"
               parent="menu_sale_voucher_main"
               action="action_sale_voucher_to_invoice"
-              sequence="20"/>
+              sequence="20"
+              groups="sale_voucher.group_voucher_manager"/>
 
     <!-- Configuration Menu -->
     <menuitem id="menu_sale_voucher_config"

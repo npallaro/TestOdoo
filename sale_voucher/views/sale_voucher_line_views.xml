@@ -125,7 +125,8 @@
               name="Lines to Invoice"
               parent="menu_sale_voucher_root"
               action="action_sale_voucher_lines_to_invoice"
-              sequence="15"/>
+              sequence="15"
+              groups="sale_voucher.group_voucher_manager"/>
 
 </odoo>
 
