@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Inherit Stock Picking Form View to add voucher reference -->
+    <record id="view_stock_picking_form_inherit_voucher" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.voucher</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="voucher_id" readonly="1" 
+                       invisible="not voucher_id"
+                       options="{'no_create': True, 'no_open': True}"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="%(sale_voucher.action_sale_voucher)d" type="action" 
+                        class="oe_stat_button" icon="fa-file-text" 
+                        invisible="not voucher_id"
+                        context="{'search_default_id': voucher_id}">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Voucher</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
+

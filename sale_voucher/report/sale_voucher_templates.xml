@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="report_sale_voucher_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div class="oe_structure"/>
+                        
+                        <!-- Header -->
+                        <h2 class="mt-4">
+                            <span>Internal Voucher</span>
+                            <span t-field="o.name"/>
+                        </h2>
+
+                        <!-- Info -->
+                        <div id="informations" class="row mt-4 mb-4">
+                            <div class="col-6">
+                                <strong>Recipient:</strong><br/>
+                                <div t-field="o.recipient_id" 
+                                     t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True}'/>
+                            </div>
+                            <div class="col-6">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <strong>Date:</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <span t-field="o.date"/>
+                                    </div>
+                                </div>
+                                <div class="row" t-if="o.internal_reference">
+                                    <div class="col-6">
+                                        <strong>Reference:</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <span t-field="o.internal_reference"/>
+                                    </div>
+                                </div>
+                                <div class="row" t-if="o.user_id">
+                                    <div class="col-6">
+                                        <strong>Salesperson:</strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <span t-field="o.user_id"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Products Table -->
+                        <table class="table table-sm o_main_table table-borderless">
+                            <thead>
+                                <tr>
+                                    <th class="text-start">Product</th>
+                                    <th class="text-end">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Taxes</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="o.line_ids" t-as="line">
+                                    <tr>
+                                        <td>
+                                            <span t-field="line.name"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-field="line.quantity"/>
+                                            <span t-field="line.product_uom_id" groups="uom.group_uom"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-field="line.price_unit"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-esc="', '.join(map(lambda x: x.name, line.tax_ids))"/>
+                                        </td>
+                                        <td class="text-end">
+                                            <span t-field="line.price_subtotal"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <!-- Totals -->
+                        <div class="clearfix">
+                            <div id="total" class="row">
+                                <div class="col-7"/>
+                                <div class="col-5">
+                                    <table class="table table-sm table-borderless">
+                                        <tr>
+                                            <td><strong>Subtotal</strong></td>
+                                            <td class="text-end">
+                                                <span t-field="o.amount_untaxed"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Taxes</td>
+                                            <td class="text-end">
+                                                <span t-field="o.amount_tax"/>
+                                            </td>
+                                        </tr>
+                                        <tr class="border-top">
+                                            <td><strong>Total</strong></td>
+                                            <td class="text-end">
+                                                <strong>
+                                                    <span t-field="o.amount_total"/>
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div t-if="o.notes" class="mt-4">
+                            <p><strong>Notes:</strong></p>
+                            <p t-field="o.notes"/>
+                        </div>
+
+                        <!-- Footer Notice -->
+                        <div class="mt-5 text-muted text-center">
+                            <p>
+                                <small>
+                                    This is an internal document and does not constitute a fiscal receipt or invoice.<br/>
+                                    An official invoice will be issued separately.
+                                </small>
+                            </p>
+                        </div>
+
+                        <div class="oe_structure"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>
+

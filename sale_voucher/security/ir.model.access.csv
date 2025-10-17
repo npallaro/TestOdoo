@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_voucher_user,sale.voucher.user,model_sale_voucher,group_voucher_user,1,1,1,0
+access_sale_voucher_manager,sale.voucher.manager,model_sale_voucher,group_voucher_manager,1,1,1,1
+access_sale_voucher_line_user,sale.voucher.line.user,model_sale_voucher_line,group_voucher_user,1,1,1,0
+access_sale_voucher_line_manager,sale.voucher.line.manager,model_sale_voucher_line,group_voucher_manager,1,1,1,1
+access_voucher_create_invoice_user,voucher.create.invoice.user,model_voucher_create_invoice,group_voucher_user,1,1,1,1
+access_voucher_create_invoice_manager,voucher.create.invoice.manager,model_voucher_create_invoice,group_voucher_manager,1,1,1,1
+

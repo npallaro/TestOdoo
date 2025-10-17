@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="view_voucher_create_invoice_wizard" model="ir.ui.view">
+        <field name="name">voucher.create.invoice.wizard</field>
+        <field name="model">voucher.create.invoice</field>
+        <field name="arch" type="xml">
+            <form string="Create Invoice from Vouchers">
+                <group>
+                    <group>
+                        <field name="voucher_ids" widget="many2many_tags" readonly="1"/>
+                        <field name="partner_id" 
+                               options="{'no_create': True}"
+                               context="{'show_address': 1, 'show_vat': True}"/>
+                        <field name="invoice_date"/>
+                    </group>
+                    <group>
+                        <field name="payment_term_id" options="{'no_create': True, 'no_open': True}"/>
+                        <field name="group_products"/>
+                        <field name="add_voucher_reference"/>
+                    </group>
+                </group>
+                <group string="Additional Notes">
+                    <field name="invoice_notes" nolabel="1" placeholder="Add notes to the invoice..."/>
+                </group>
+                <footer>
+                    <button string="Create Invoice" name="action_create_invoice" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action to create invoice from vouchers (called from tree view) -->
+    <record id="action_voucher_create_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Create Invoice</field>
+        <field name="res_model">voucher.create.invoice</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_sale_voucher"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+</odoo>
+

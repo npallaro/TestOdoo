@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Actions -->
+    <record id="action_sale_voucher" model="ir.actions.act_window">
+        <field name="name">Sales Vouchers</field>
+        <field name="res_model">sale.voucher</field>
+        <field name="view_mode">tree,kanban,form,pivot,graph</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first sales voucher
+            </p>
+            <p>
+                Sales vouchers are internal delivery documents that can be invoiced later to a different customer.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_sale_voucher_to_invoice" model="ir.actions.act_window">
+        <field name="name">Vouchers to Invoice</field>
+        <field name="res_model">sale.voucher</field>
+        <field name="view_mode">tree,kanban,form</field>
+        <field name="domain">[('state', '=', 'delivered')]</field>
+        <field name="context">{'search_default_delivered': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No vouchers to invoice
+            </p>
+            <p>
+                Vouchers that have been delivered but not yet invoiced will appear here.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Items -->
+    <menuitem id="menu_sale_voucher_root"
+              name="Vouchers"
+              web_icon="sale_voucher,static/description/icon.png"
+              sequence="50"/>
+
+    <menuitem id="menu_sale_voucher_main"
+              name="Vouchers"
+              parent="menu_sale_voucher_root"
+              sequence="10"/>
+
+    <menuitem id="menu_sale_voucher_all"
+              name="All Vouchers"
+              parent="menu_sale_voucher_main"
+              action="action_sale_voucher"
+              sequence="10"/>
+
+    <menuitem id="menu_sale_voucher_to_invoice"
+              name="To Invoice"
+              parent="menu_sale_voucher_main"
+              action="action_sale_voucher_to_invoice"
+              sequence="20"/>
+
+    <!-- Configuration Menu -->
+    <menuitem id="menu_sale_voucher_config"
+              name="Configuration"
+              parent="menu_sale_voucher_root"
+              sequence="100"
+              groups="base.group_system"/>
+
+</odoo>
+

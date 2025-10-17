@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Tree View -->
+    <record id="view_sale_voucher_tree" model="ir.ui.view">
+        <field name="name">sale.voucher.tree</field>
+        <field name="model">sale.voucher</field>
+        <field name="arch" type="xml">
+            <tree string="Sales Vouchers" 
+                  decoration-info="state=='draft'" 
+                  decoration-muted="state=='cancelled'"
+                  decoration-success="state=='delivered'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="recipient_id"/>
+                <field name="user_id" optional="show" widget="many2one_avatar_user"/>
+                <field name="amount_untaxed" sum="Total Untaxed" optional="show"/>
+                <field name="amount_tax" sum="Total Tax" optional="hide"/>
+                <field name="amount_total" sum="Total" decoration-bf="1"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state=='draft'" 
+                       decoration-warning="state in ('confirmed','delivered')"
+                       decoration-success="state=='invoiced'"
+                       decoration-muted="state=='cancelled'"/>
+                <field name="invoiced_to_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_sale_voucher_form" model="ir.ui.view">
+        <field name="name">sale.voucher.form</field>
+        <field name="model">sale.voucher</field>
+        <field name="arch" type="xml">
+            <form string="Sales Voucher">
+                <header>
+                    <button name="action_confirm" string="Confirm" type="object" 
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_view_picking" string="View Delivery" type="object" 
+                            class="oe_highlight" invisible="not picking_id or state == 'draft'"/>
+                    <button name="action_create_invoice" string="Create Invoice" type="object" 
+                            class="oe_highlight" invisible="state != 'delivered'"/>
+                    <button name="action_view_invoice" string="View Invoice" type="object" 
+                            invisible="not invoice_id"/>
+                    <button name="action_cancel" string="Cancel" type="object" 
+                            invisible="state in ('invoiced', 'cancelled')"/>
+                    <button name="action_draft" string="Reset to Draft" type="object" 
+                            invisible="state not in ('confirmed', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,delivered,invoiced"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_picking" type="object" 
+                                class="oe_stat_button" icon="fa-truck" 
+                                invisible="not picking_id">
+                            <field name="picking_state" widget="label_selection" 
+                                   options="{'classes': {'draft': 'default', 'confirmed': 'info', 'assigned': 'success', 'done': 'success', 'cancel': 'danger'}}"/>
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Delivery</span>
+                            </div>
+                        </button>
+                        <button name="action_view_invoice" type="object" 
+                                class="oe_stat_button" icon="fa-file-text-o" 
+                                invisible="not invoice_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Invoice</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="recipient_id" 
+                                   options="{'no_create': True, 'no_open': True}"
+                                   context="{'show_address': 1, 'show_vat': True}"/>
+                            <field name="date"/>
+                            <field name="internal_reference"/>
+                        </group>
+                        <group>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group invisible="state == 'invoiced'">
+                        <group>
+                            <field name="invoiced_to_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Products" name="products">
+                            <field name="line_ids" widget="section_and_note_one2many">
+                                <tree editable="bottom">
+                                    <control>
+                                        <create string="Add a product"/>
+                                        <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
+                                        <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
+                                    </control>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id" 
+                                           required="not display_type"
+                                           options="{'no_create': True}"
+                                           context="{'partner_id': parent.recipient_id, 'quantity': quantity, 'uom': product_uom_id}"
+                                           force_save="1"/>
+                                    <field name="name" widget="section_and_note_text" optional="show"/>
+                                    <field name="quantity"/>
+                                    <field name="product_uom_id" groups="uom.group_uom" 
+                                           options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="price_unit"/>
+                                    <field name="tax_ids" widget="many2many_tags" 
+                                           options="{'no_create': True}" optional="show"/>
+                                    <field name="price_subtotal" widget="monetary"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="voucher_state" column_invisible="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                </tree>
+                            </field>
+                            <group class="oe_subtotal_footer oe_right">
+                                <field name="amount_untaxed" widget="monetary"/>
+                                <field name="amount_tax" widget="monetary"/>
+                                <div class="oe_subtotal_footer_separator oe_inline">
+                                    <label for="amount_total"/>
+                                </div>
+                                <field name="amount_total" nolabel="1" class="oe_subtotal_footer_separator" widget="monetary"/>
+                            </group>
+                            <div class="oe_clear"/>
+                        </page>
+                        <page string="Other Info" name="other_info">
+                            <group>
+                                <group string="Delivery">
+                                    <field name="picking_id" readonly="1"/>
+                                    <field name="picking_state" readonly="1"/>
+                                </group>
+                                <group string="Invoice">
+                                    <field name="invoice_id" readonly="1"/>
+                                    <field name="invoiced_to_id" readonly="1"/>
+                                </group>
+                            </group>
+                            <group string="Internal Notes">
+                                <field name="notes" nolabel="1" placeholder="Internal notes..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Kanban View -->
+    <record id="view_sale_voucher_kanban" model="ir.ui.view">
+        <field name="name">sale.voucher.kanban</field>
+        <field name="model">sale.voucher</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="recipient_id"/>
+                <field name="amount_total"/>
+                <field name="state"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="row mb4">
+                                <div class="col-6">
+                                    <strong><field name="name"/></strong>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <strong><field name="amount_total" widget="monetary"/></strong>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 text-muted">
+                                    <span><field name="recipient_id"/></span>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <field name="state" widget="label_selection" 
+                                           options="{'classes': {'draft': 'default', 'confirmed': 'info', 'delivered': 'warning', 'invoiced': 'success', 'cancelled': 'danger'}}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_sale_voucher_search" model="ir.ui.view">
+        <field name="name">sale.voucher.search</field>
+        <field name="model">sale.voucher</field>
+        <field name="arch" type="xml">
+            <search string="Search Vouchers">
+                <field name="name" string="Voucher Number"/>
+                <field name="recipient_id" string="Recipient"/>
+                <field name="invoiced_to_id" string="Invoiced To"/>
+                <field name="internal_reference" string="Reference"/>
+                <field name="user_id" string="Salesperson"/>
+                <separator/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter string="Delivered" name="delivered" domain="[('state', '=', 'delivered')]"/>
+                <filter string="To Invoice" name="to_invoice" domain="[('state', '=', 'delivered')]"/>
+                <filter string="Invoiced" name="invoiced" domain="[('state', '=', 'invoiced')]"/>
+                <separator/>
+                <filter string="My Vouchers" name="my_vouchers" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter string="Date" name="filter_date" date="date"/>
+                <group expand="0" string="Group By">
+                    <filter string="Recipient" name="group_recipient" context="{'group_by': 'recipient_id'}"/>
+                    <filter string="Invoiced To" name="group_invoiced_to" context="{'group_by': 'invoiced_to_id'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Salesperson" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by': 'date'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Pivot View -->
+    <record id="view_sale_voucher_pivot" model="ir.ui.view">
+        <field name="name">sale.voucher.pivot</field>
+        <field name="model">sale.voucher</field>
+        <field name="arch" type="xml">
+            <pivot string="Vouchers Analysis">
+                <field name="recipient_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Graph View -->
+    <record id="view_sale_voucher_graph" model="ir.ui.view">
+        <field name="name">sale.voucher.graph</field>
+        <field name="model">sale.voucher</field>
+        <field name="arch" type="xml">
+            <graph string="Vouchers Analysis" type="bar">
+                <field name="date" interval="month"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>
+
