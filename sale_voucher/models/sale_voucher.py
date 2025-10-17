@@ -317,9 +317,7 @@ class SaleVoucher(models.Model):
             'res_model': 'stock.picking',
             'res_id': self.picking_id.id,
             'view_mode': 'form',
-            'view_id': self.env.ref('stock.view_picking_form').id,
             'target': 'current',
-            'context': {'default_picking_type_id': self.picking_id.picking_type_id.id},
         }
     
     def action_view_invoice(self):

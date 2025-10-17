@@ -14,6 +14,15 @@ class StockPicking(models.Model):
         help='Internal sales voucher that generated this delivery',
     )
     
+    # Compatibility field for standard Odoo views that expect sale_id
+    # This prevents errors when opening picking forms from vouchers
+    sale_id = fields.Many2one(
+        'sale.order',
+        string='Sales Order',
+        copy=False,
+        help='Compatibility field - not used by voucher module',
+    )
+    
     def button_validate(self):
         """Override to update voucher state when picking is validated"""
         res = super().button_validate()
