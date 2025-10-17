@@ -12,7 +12,6 @@ class VoucherLinesCreateInvoiceWizard(models.TransientModel):
         'res.partner',
         string='Invoice To',
         required=True,
-        domain=[('customer_rank', '>', 0)],
         help='Customer who will receive the invoice',
     )
     
