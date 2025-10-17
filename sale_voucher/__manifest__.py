@@ -106,6 +106,7 @@ Uso commerciale richiede acquisto licenza.
         'data/stock_data.xml',
         
         # Views
+        'views/sale_voucher_views_simple.xml',
         'views/sale_voucher_views.xml',
         'views/sale_voucher_menu.xml',
         'views/stock_picking_views.xml',

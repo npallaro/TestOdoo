@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Simplified Form View for Testing -->
+    <record id="view_sale_voucher_form_simple" model="ir.ui.view">
+        <field name="name">sale.voucher.form.simple</field>
+        <field name="model">sale.voucher</field>
+        <field name="priority">0</field>
+        <field name="arch" type="xml">
+            <form string="Sales Voucher">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="recipient_id"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Products">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                    <field name="product_uom_id" groups="uom.group_uom"/>
+                                    <field name="price_unit"/>
+                                    <field name="price_subtotal"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
+

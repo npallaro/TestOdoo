@@ -33,7 +33,7 @@
     <record id="view_sale_voucher_form" model="ir.ui.view">
         <field name="name">sale.voucher.form</field>
         <field name="model">sale.voucher</field>
-        <field name="priority">1</field>
+        <field name="priority">10</field>
         <field name="arch" type="xml">
             <form string="Sales Voucher">
                 <header>
