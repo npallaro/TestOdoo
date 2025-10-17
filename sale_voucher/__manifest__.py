@@ -108,8 +108,8 @@ Uso commerciale richiede acquisto licenza.
         # Views
         'views/sale_voucher_views_simple.xml',
         'views/sale_voucher_views.xml',
+        'views/sale_voucher_menu.xml',  # MUST be before sale_voucher_line_views
         'views/sale_voucher_line_views.xml',
-        'views/sale_voucher_menu.xml',
         'views/stock_picking_views.xml',
         
         # Wizard
