@@ -228,6 +228,9 @@ class SaleVoucher(models.Model):
         
         # Create stock moves
         for line in self.line_ids:
+            # Skip section and note lines
+            if line.display_type:
+                continue
             if line.quantity <= 0:
                 continue
                 

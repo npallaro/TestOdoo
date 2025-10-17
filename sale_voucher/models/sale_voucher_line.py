@@ -9,6 +9,11 @@ class SaleVoucherLine(models.Model):
     _description = 'Sales Voucher Line'
     _order = 'voucher_id, sequence, id'
     
+    display_type = fields.Selection([
+        ('line_section', 'Section'),
+        ('line_note', 'Note'),
+    ], default=False, help="Technical field for UX purpose.")
+    
     sequence = fields.Integer(
         string='Sequence',
         default=10,
@@ -31,13 +36,11 @@ class SaleVoucherLine(models.Model):
     product_id = fields.Many2one(
         'product.product',
         string='Product',
-        required=True,
         domain=[('sale_ok', '=', True)],
     )
     
     name = fields.Text(
         string='Description',
-        required=True,
     )
     
     quantity = fields.Float(
@@ -98,9 +101,17 @@ class SaleVoucherLine(models.Model):
         string='Company',
     )
     
-    @api.depends('quantity', 'price_unit', 'tax_ids')
+    @api.depends('quantity', 'price_unit', 'tax_ids', 'display_type')
     def _compute_amount(self):
         for line in self:
+            if line.display_type:
+                line.update({
+                    'price_subtotal': 0.0,
+                    'price_tax': 0.0,
+                    'price_total': 0.0,
+                })
+                continue
+                
             price = line.price_unit * line.quantity
             
             if line.tax_ids:
@@ -178,9 +189,11 @@ class SaleVoucherLine(models.Model):
                 }
             }
     
-    @api.constrains('quantity')
+    @api.constrains('quantity', 'display_type')
     def _check_quantity(self):
         for line in self:
+            if line.display_type:
+                continue
             if line.quantity <= 0:
                 raise ValidationError(_(
                     'The quantity must be positive.'
