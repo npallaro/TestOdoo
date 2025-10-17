@@ -39,37 +39,11 @@
                 <header>
                     <button name="action_confirm" string="Confirm" type="object" 
                             class="oe_highlight" invisible="state != 'draft'"/>
-                    <button name="action_view_picking" string="View Delivery" type="object" 
-                            class="oe_highlight" invisible="not picking_id or state == 'draft'"/>
-                    <button name="action_create_invoice" string="Create Invoice" type="object" 
-                            class="oe_highlight" invisible="state != 'delivered'"/>
-                    <button name="action_view_invoice" string="View Invoice" type="object" 
-                            invisible="not invoice_id"/>
                     <button name="action_cancel" string="Cancel" type="object" 
                             invisible="state in ('invoiced', 'cancelled')"/>
-                    <button name="action_draft" string="Reset to Draft" type="object" 
-                            invisible="state not in ('confirmed', 'cancelled')"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,delivered,invoiced"/>
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_view_picking" type="object" 
-                                class="oe_stat_button" icon="fa-truck" 
-                                invisible="not picking_id">
-                            <field name="picking_state" widget="label_selection" 
-                                   options="{'classes': {'draft': 'default', 'confirmed': 'info', 'assigned': 'success', 'done': 'success', 'cancel': 'danger'}}"/>
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">Delivery</span>
-                            </div>
-                        </button>
-                        <button name="action_view_invoice" type="object" 
-                                class="oe_stat_button" icon="fa-file-text-o" 
-                                invisible="not invoice_id">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">Invoice</span>
-                            </div>
-                        </button>
-                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>
@@ -78,76 +52,44 @@
                     <group>
                         <group>
                             <field name="recipient_id" 
-                                   readonly="state in ('invoiced', 'cancelled')"
-                                   options="{'no_create': True, 'no_open': True}"
-                                   context="{'show_address': 1, 'show_vat': True}"/>
+                                   readonly="state in ('invoiced', 'cancelled')"/>
                             <field name="date" readonly="state in ('invoiced', 'cancelled')"/>
-                            <field name="internal_reference" readonly="state in ('invoiced', 'cancelled')"/>
                         </group>
                         <group>
-                            <field name="user_id" widget="many2one_avatar_user"/>
-                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
-                            <field name="currency_id" invisible="1"/>
-                        </group>
-                    </group>
-                    <group invisible="state == 'invoiced'">
-                        <group>
-                            <field name="invoiced_to_id" readonly="1"/>
+                            <field name="user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Products" name="products">
-                            <field name="line_ids" widget="section_and_note_one2many" readonly="state in ('invoiced', 'cancelled')">
+                        <page string="Products">
+                            <field name="line_ids" readonly="state in ('invoiced', 'cancelled')">
                                 <list editable="bottom">
-                                    <control>
-                                        <create string="Add a product"/>
-                                        <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
-                                        <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
-                                    </control>
-                                    <field name="display_type" column_invisible="1"/>
-                                    <field name="sequence" widget="handle"/>
-                                    <field name="product_id" 
-                                           required="not display_type"
-                                           options="{'no_create': True}"
-                                           context="{'partner_id': parent.recipient_id, 'quantity': quantity, 'uom': product_uom_id}"
-                                           force_save="1"/>
-                                    <field name="name" widget="section_and_note_text" optional="show"/>
-                                    <field name="quantity" required="not display_type"/>
-                                    <field name="product_uom_id" 
-                                           required="not display_type"
-                                           options="{'no_create': True, 'no_open': True}"/>
+                                    <field name="product_id" required="1"/>
+                                    <field name="name"/>
+                                    <field name="quantity" required="1"/>
+                                    <field name="product_uom_id" required="1"/>
                                     <field name="price_unit"/>
-                                    <field name="tax_ids" widget="many2many_tags" 
-                                           options="{'no_create': True}" optional="show"/>
-                                    <field name="price_subtotal" widget="monetary"/>
+                                    <field name="tax_ids" widget="many2many_tags" optional="show"/>
+                                    <field name="price_subtotal"/>
                                     <field name="currency_id" column_invisible="1"/>
-                                    <field name="voucher_state" column_invisible="1"/>
-                                    <field name="company_id" column_invisible="1"/>
                                 </list>
                             </field>
                             <group class="oe_subtotal_footer oe_right">
-                                <field name="amount_untaxed" widget="monetary"/>
-                                <field name="amount_tax" widget="monetary"/>
-                                <div class="oe_subtotal_footer_separator oe_inline">
-                                    <label for="amount_total"/>
-                                </div>
-                                <field name="amount_total" nolabel="1" class="oe_subtotal_footer_separator" widget="monetary"/>
+                                <field name="amount_untaxed"/>
+                                <field name="amount_tax"/>
+                                <field name="amount_total" class="oe_subtotal_footer_separator"/>
+                                <field name="currency_id" invisible="1"/>
                             </group>
-                            <div class="oe_clear"/>
                         </page>
-                        <page string="Other Info" name="other_info">
+                        <page string="Other Info">
                             <group>
                                 <group string="Delivery">
                                     <field name="picking_id" readonly="1"/>
-                                    <field name="picking_state" readonly="1"/>
                                 </group>
                                 <group string="Invoice">
                                     <field name="invoice_id" readonly="1"/>
                                     <field name="invoiced_to_id" readonly="1"/>
                                 </group>
-                            </group>
-                            <group string="Internal Notes">
-                                <field name="notes" nolabel="1" placeholder="Internal notes..." readonly="state in ('invoiced', 'cancelled')"/>
                             </group>
                         </page>
                     </notebook>
@@ -173,7 +115,7 @@
                 <field name="state"/>
                 <field name="currency_id"/>
                 <templates>
-                    <t t-name="kanban-box">
+                    <t t-name="card">
                         <div class="oe_kanban_global_click">
                             <div class="row mb4">
                                 <div class="col-6">
@@ -184,12 +126,13 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-6 text-muted">
-                                    <span><field name="recipient_id"/></span>
+                                <div class="col-12">
+                                    <field name="recipient_id"/>
                                 </div>
-                                <div class="col-6 text-end">
-                                    <field name="state" widget="label_selection" 
-                                           options="{'classes': {'draft': 'default', 'confirmed': 'info', 'delivered': 'warning', 'invoiced': 'success', 'cancelled': 'danger'}}"/>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <field name="state" widget="badge"/>
                                 </div>
                             </div>
                         </div>
@@ -204,29 +147,21 @@
         <field name="name">sale.voucher.search</field>
         <field name="model">sale.voucher</field>
         <field name="arch" type="xml">
-            <search string="Search Vouchers">
-                <field name="name" string="Voucher Number"/>
-                <field name="recipient_id" string="Recipient"/>
-                <field name="invoiced_to_id" string="Invoiced To"/>
-                <field name="internal_reference" string="Reference"/>
-                <field name="user_id" string="Salesperson"/>
-                <separator/>
+            <search string="Sales Vouchers">
+                <field name="name"/>
+                <field name="recipient_id"/>
+                <field name="user_id"/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'confirmed')]"/>
                 <filter string="Delivered" name="delivered" domain="[('state', '=', 'delivered')]"/>
-                <filter string="To Invoice" name="to_invoice" domain="[('state', '=', 'delivered')]"/>
                 <filter string="Invoiced" name="invoiced" domain="[('state', '=', 'invoiced')]"/>
                 <separator/>
                 <filter string="My Vouchers" name="my_vouchers" domain="[('user_id', '=', uid)]"/>
-                <separator/>
-                <filter string="Date" name="filter_date" date="date"/>
                 <group expand="0" string="Group By">
                     <filter string="Recipient" name="group_recipient" context="{'group_by': 'recipient_id'}"/>
-                    <filter string="Invoiced To" name="group_invoiced_to" context="{'group_by': 'invoiced_to_id'}"/>
-                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
-                    <filter string="Salesperson" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="User" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Date" name="group_date" context="{'group_by': 'date'}"/>
-                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
                 </group>
             </search>
         </field>
@@ -237,7 +172,7 @@
         <field name="name">sale.voucher.pivot</field>
         <field name="model">sale.voucher</field>
         <field name="arch" type="xml">
-            <pivot string="Vouchers Analysis">
+            <pivot string="Sales Vouchers Analysis">
                 <field name="recipient_id" type="row"/>
                 <field name="date" interval="month" type="col"/>
                 <field name="amount_total" type="measure"/>
@@ -250,7 +185,7 @@
         <field name="name">sale.voucher.graph</field>
         <field name="model">sale.voucher</field>
         <field name="arch" type="xml">
-            <graph string="Vouchers Analysis" type="bar">
+            <graph string="Sales Vouchers Analysis" type="bar">
                 <field name="date" interval="month"/>
                 <field name="amount_total" type="measure"/>
             </graph>
