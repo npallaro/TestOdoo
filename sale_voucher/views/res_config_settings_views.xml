@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<odoo>
-    <!-- No view inheritance needed -->
-    <!-- The field is now properly implemented in res_config_settings.py -->
-</odoo>
-
