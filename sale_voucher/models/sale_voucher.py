@@ -175,9 +175,9 @@ class SaleVoucher(models.Model):
             })
             
             # Post message in chatter
-            voucher.message_post(
-                body=_('Voucher confirmed. Delivery order %s created.') % picking.name
-            )
+            # voucher.message_post(
+            #     body=_('Voucher confirmed. Delivery order %s created.') % picking.name
+            # )
         
         return True
     
@@ -258,9 +258,9 @@ class SaleVoucher(models.Model):
             
             voucher.write({'state': 'delivered'})
             
-            voucher.message_post(
-                body=_('Voucher marked as delivered and ready for invoicing.')
-            )
+            # voucher.message_post(
+            #     body=_('Voucher marked as delivered and ready for invoicing.')
+            # )
         
         return True
     
@@ -282,7 +282,7 @@ class SaleVoucher(models.Model):
             
             voucher.write({'state': 'cancelled'})
             
-            voucher.message_post(body=_('Voucher cancelled.'))
+            # voucher.message_post(body=_('Voucher cancelled.'))
         
         return True
     
@@ -300,7 +300,7 @@ class SaleVoucher(models.Model):
             
             voucher.write({'state': 'draft'})
             
-            voucher.message_post(body=_('Voucher reset to draft.'))
+            # voucher.message_post(body=_('Voucher reset to draft.'))
         
         return True
     
