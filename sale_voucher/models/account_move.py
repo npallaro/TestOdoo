@@ -30,14 +30,20 @@ class AccountMove(models.Model):
                         new_qty_invoiced = max(0, voucher_line.qty_invoiced - invoice_line.quantity)
                         voucher_line.write({'qty_invoiced': new_qty_invoiced})
                 
-                # Reactivate voucher if it was archived
-                if not move.voucher_id.active and move.voucher_id.state == 'invoiced':
+                # Reactivate voucher if it was archived (regardless of state)
+                if not move.voucher_id.active:
                     move.voucher_id.write({
                         'active': True,
                         'state': 'delivered',
                     })
                     move.voucher_id.message_post(
                         body=_('Invoice %s deleted. Voucher reactivated and set back to Delivered state.') % move.name
+                    )
+                # If voucher was in 'invoiced' state but still active, set back to 'delivered'
+                elif move.voucher_id.state == 'invoiced':
+                    move.voucher_id.write({'state': 'delivered'})
+                    move.voucher_id.message_post(
+                        body=_('Invoice %s deleted. Voucher set back to Delivered state.') % move.name
                     )
         
         return super().unlink()
