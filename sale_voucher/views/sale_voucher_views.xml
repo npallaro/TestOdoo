@@ -33,6 +33,7 @@
     <record id="view_sale_voucher_form" model="ir.ui.view">
         <field name="name">sale.voucher.form</field>
         <field name="model">sale.voucher</field>
+        <field name="priority">1</field>
         <field name="arch" type="xml">
             <form string="Sales Voucher">
                 <header>
@@ -102,6 +103,7 @@
                                         <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
                                         <create string="Add a note" context="{'default_display_type': 'line_note'}"/>
                                     </control>
+                                    <field name="display_type" column_invisible="1"/>
                                     <field name="sequence" widget="handle"/>
                                     <field name="product_id" 
                                            required="not display_type"
