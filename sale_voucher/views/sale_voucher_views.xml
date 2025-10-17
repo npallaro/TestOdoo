@@ -75,6 +75,9 @@
                         <group>
                             <field name="recipient_id" 
                                    readonly="state in ('invoiced', 'cancelled')"/>
+                            <field name="warehouse_id" 
+                                   options="{'no_create': True}" 
+                                   readonly="state in ('invoiced', 'cancelled')"/>
                             <field name="date" readonly="state in ('invoiced', 'cancelled')"/>
                             <field name="internal_reference" readonly="state in ('invoiced', 'cancelled')"/>
                         </group>

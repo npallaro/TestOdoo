@@ -126,6 +126,18 @@ class VoucherCreateInvoiceWizard(models.TransientModel):
         help='Customer who will receive the invoice (can be different from goods recipient)',
     )
     
+    include_voucher_ref = fields.Boolean(
+        string='Include Voucher Reference',
+        default=True,
+        help='Add voucher number as reference in invoice description',
+    )
+    
+    merge_same_product = fields.Boolean(
+        string='Merge Same Products',
+        default=False,
+        help='Merge invoice lines with the same product into a single line',
+    )
+    
     line_ids = fields.One2many(
         'voucher.create.invoice.wizard.line',
         'wizard_id',
@@ -195,7 +207,9 @@ class VoucherCreateInvoiceWizard(models.TransientModel):
             'invoice_date': fields.Date.context_today(self),
         })
         
-        # Create invoice lines
+        # Prepare invoice lines
+        invoice_lines_data = {}
+        
         for wizard_line in lines_to_invoice:
             voucher_line = wizard_line.voucher_line_id
             
@@ -208,19 +222,49 @@ class VoucherCreateInvoiceWizard(models.TransientModel):
                     'Please define income account for product "%s" or its category.'
                 ) % voucher_line.product_id.name)
             
-            self.env['account.move.line'].create({
-                'move_id': invoice.id,
-                'product_id': voucher_line.product_id.id,
-                'name': voucher_line.name,
-                'quantity': wizard_line.qty_invoice_now,
-                'product_uom_id': voucher_line.product_uom_id.id,
-                'price_unit': voucher_line.price_unit,
-                'tax_ids': [(6, 0, voucher_line.tax_ids.ids)],
-                'account_id': account.id,
-            })
+            # Prepare description
+            description = voucher_line.name
+            if self.include_voucher_ref:
+                description = f"[{self.voucher_id.name}] {description}"
+            
+            # If merge_same_product, group by product
+            if self.merge_same_product:
+                key = (voucher_line.product_id.id, voucher_line.price_unit, tuple(voucher_line.tax_ids.ids))
+                if key in invoice_lines_data:
+                    # Merge with existing line
+                    invoice_lines_data[key]['quantity'] += wizard_line.qty_invoice_now
+                else:
+                    # Create new line data
+                    invoice_lines_data[key] = {
+                        'move_id': invoice.id,
+                        'product_id': voucher_line.product_id.id,
+                        'name': description,
+                        'quantity': wizard_line.qty_invoice_now,
+                        'product_uom_id': voucher_line.product_uom_id.id,
+                        'price_unit': voucher_line.price_unit,
+                        'tax_ids': [(6, 0, voucher_line.tax_ids.ids)],
+                        'account_id': account.id,
+                    }
+            else:
+                # Create separate line for each voucher line
+                self.env['account.move.line'].create({
+                    'move_id': invoice.id,
+                    'product_id': voucher_line.product_id.id,
+                    'name': description,
+                    'quantity': wizard_line.qty_invoice_now,
+                    'product_uom_id': voucher_line.product_uom_id.id,
+                    'price_unit': voucher_line.price_unit,
+                    'tax_ids': [(6, 0, voucher_line.tax_ids.ids)],
+                    'account_id': account.id,
+                })
             
             # Update qty_invoiced on voucher line
             voucher_line.qty_invoiced += wizard_line.qty_invoice_now
+        
+        # Create merged invoice lines if merge_same_product is enabled
+        if self.merge_same_product:
+            for line_data in invoice_lines_data.values():
+                self.env['account.move.line'].create(line_data)
         
         # Update voucher
         self.voucher_id.write({

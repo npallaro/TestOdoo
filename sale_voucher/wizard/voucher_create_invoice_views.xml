@@ -10,10 +10,12 @@
                 <group>
                     <group>
                         <field name="voucher_id" readonly="1"/>
-                    </group>
-                    <group>
                         <field name="partner_id" 
                                options="{'no_create': True}"/>
+                    </group>
+                    <group>
+                        <field name="include_voucher_ref"/>
+                        <field name="merge_same_product"/>
                     </group>
                 </group>
                 

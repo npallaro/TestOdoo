@@ -34,6 +34,23 @@ class SaleVoucher(models.Model):
         help='Customer who physically receives the goods',
     )
     
+    warehouse_id = fields.Many2one(
+        'stock.warehouse',
+        string='Warehouse',
+        required=True,
+        tracking=True,
+        default=lambda self: self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1),
+        help='Warehouse from which goods will be delivered',
+    )
+    
+    company_id = fields.Many2one(
+        'res.company',
+        string='Company',
+        required=True,
+        default=lambda self: self.env.company,
+        tracking=True,
+    )
+    
     line_ids = fields.One2many(
         'sale.voucher.line',
         'voucher_id',
@@ -235,19 +252,18 @@ class SaleVoucher(models.Model):
         """Create stock picking for voucher delivery"""
         self.ensure_one()
         
-        # Get picking type
-        picking_type = self.env.ref(
-            'sale_voucher.picking_type_voucher_out',
-            raise_if_not_found=False
-        )
+        # Get picking type from selected warehouse
+        # Use the warehouse's outgoing picking type
+        picking_type = self.warehouse_id.out_type_id
         
         if not picking_type:
             raise UserError(_(
-                'Voucher picking type not found. '
-                'Please reinstall the module or contact support.'
-            ))
+                'No outgoing picking type found for warehouse %s. '
+                'Please configure the warehouse properly.'
+            ) % self.warehouse_id.name)
         
-        location_src = picking_type.default_location_src_id
+        # Use warehouse stock location as source
+        location_src = self.warehouse_id.lot_stock_id
         location_dest = self.env.ref(
             'sale_voucher.stock_location_voucher_customers',
             raise_if_not_found=False
