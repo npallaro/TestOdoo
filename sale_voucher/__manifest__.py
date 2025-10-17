@@ -111,6 +111,7 @@ Uso commerciale richiede acquisto licenza.
         'views/sale_voucher_line_views.xml',
         'views/sale_voucher_menu.xml',
         'views/stock_picking_views.xml',
+        'views/res_config_settings_views.xml',
         
         # Wizard
         'wizard/voucher_create_invoice_views.xml',
