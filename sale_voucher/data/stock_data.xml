@@ -20,8 +20,6 @@
             <field name="default_location_dest_id" ref="stock_location_voucher_customers"/>
             <field name="sequence">100</field>
             <field name="company_id" ref="base.main_company"/>
-            <field name="show_operations">False</field>
-            <field name="show_reserved">True</field>
         </record>
 
         <!-- Sequence for Voucher Picking -->
