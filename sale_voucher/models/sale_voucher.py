@@ -301,10 +301,9 @@ class SaleVoucher(models.Model):
             if voucher.state != 'confirmed':
                 raise UserError(_('Only confirmed vouchers can be marked as delivered.'))
             
-            if voucher.picking_id and voucher.picking_id.state != 'done':
-                raise UserError(_(
-                    'The delivery order must be validated before marking the voucher as delivered.'
-                ))
+            # Note: We don't check picking state here because this method is called
+            # FROM button_validate() BEFORE the picking state is set to 'done'.
+            # The picking will be validated right after this method returns.
             
             voucher.write({'state': 'delivered'})
             
