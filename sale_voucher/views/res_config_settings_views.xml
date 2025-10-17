@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- No views needed - the dummy field in res_config_settings.py fixes the bug -->
+
+    <!-- Fix Odoo 18 stock settings bug by hiding problematic sections -->
+    <record id="view_stock_config_settings_inherit_fix" model="ir.ui.view">
+        <field name="name">res.config.settings.stock.inherit.fix</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Hide any element containing default_picking_policy -->
+            <xpath expr="//div[.//field[@name='default_picking_policy']]" position="replace"/>
+            <xpath expr="//group[.//field[@name='default_picking_policy']]" position="replace"/>
+            <xpath expr="//field[@name='default_picking_policy']" position="replace"/>
+        </field>
+    </record>
+
 </odoo>
 
