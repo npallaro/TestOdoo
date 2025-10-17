@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Wizard Form View -->
+    <record id="view_voucher_lines_create_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">voucher.lines.create.invoice.wizard.form</field>
+        <field name="model">voucher.lines.create.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Invoice from Selected Lines">
+                <group>
+                    <field name="partner_id" 
+                           options="{'no_create': True}"/>
+                </group>
+                
+                <group string="Selected Lines">
+                    <field name="line_ids" nolabel="1">
+                        <list create="0" delete="0" edit="0">
+                            <field name="voucher_id"/>
+                            <field name="product_id"/>
+                            <field name="name"/>
+                            <field name="quantity"/>
+                            <field name="qty_invoiced"/>
+                            <field name="qty_to_invoice"/>
+                            <field name="product_uom_id"/>
+                            <field name="price_unit"/>
+                        </list>
+                    </field>
+                </group>
+                
+                <footer>
+                    <button string="Create Invoice" 
+                            name="action_create_invoice" 
+                            type="object" 
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_voucher_lines_create_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Create Invoice</field>
+        <field name="res_model">voucher.lines.create.invoice.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_sale_voucher_line"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+</odoo>
+

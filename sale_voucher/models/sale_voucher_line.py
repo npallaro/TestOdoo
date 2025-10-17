@@ -39,6 +39,14 @@ class SaleVoucherLine(models.Model):
         domain=[('sale_ok', '=', True)],
     )
     
+    product_categ_id = fields.Many2one(
+        'product.category',
+        string='Product Category',
+        related='product_id.categ_id',
+        store=True,
+        readonly=True,
+    )
+    
     name = fields.Text(
         string='Description',
     )
