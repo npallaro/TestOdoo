@@ -1,19 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- Fix for Odoo 18 stock settings view bug -->
-    <!-- Remove reference to deprecated default_picking_policy field -->
-    <record id="view_stock_config_settings_inherit_fix" model="ir.ui.view">
-        <field name="name">res.config.settings.stock.inherit.fix</field>
-        <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="stock.res_config_settings_view_form"/>
-        <field name="arch" type="xml">
-            <!-- Remove default_picking_policy field if it exists -->
-            <xpath expr="//field[@name='default_picking_policy']" position="replace">
-                <!-- Field removed - deprecated in Odoo 18 -->
-            </xpath>
-        </field>
-    </record>
-
+    <!-- No views needed - the dummy field in res_config_settings.py fixes the bug -->
 </odoo>
 
