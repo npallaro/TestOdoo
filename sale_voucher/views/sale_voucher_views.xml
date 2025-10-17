@@ -78,10 +78,11 @@
                     <group>
                         <group>
                             <field name="recipient_id" 
+                                   readonly="state in ('invoiced', 'cancelled')"
                                    options="{'no_create': True, 'no_open': True}"
                                    context="{'show_address': 1, 'show_vat': True}"/>
-                            <field name="date"/>
-                            <field name="internal_reference"/>
+                            <field name="date" readonly="state in ('invoiced', 'cancelled')"/>
+                            <field name="internal_reference" readonly="state in ('invoiced', 'cancelled')"/>
                         </group>
                         <group>
                             <field name="user_id" widget="many2one_avatar_user"/>
@@ -96,7 +97,7 @@
                     </group>
                     <notebook>
                         <page string="Products" name="products">
-                            <field name="line_ids" widget="section_and_note_one2many">
+                            <field name="line_ids" widget="section_and_note_one2many" readonly="state in ('invoiced', 'cancelled')">
                                 <list editable="bottom">
                                     <control>
                                         <create string="Add a product"/>
@@ -145,7 +146,7 @@
                                 </group>
                             </group>
                             <group string="Internal Notes">
-                                <field name="notes" nolabel="1" placeholder="Internal notes..."/>
+                                <field name="notes" nolabel="1" placeholder="Internal notes..." readonly="state in ('invoiced', 'cancelled')"/>
                             </group>
                         </page>
                     </notebook>

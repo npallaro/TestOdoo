@@ -24,7 +24,6 @@ class SaleVoucher(models.Model):
         required=True,
         default=fields.Date.context_today,
         tracking=True,
-        states={'invoiced': [('readonly', True)], 'cancelled': [('readonly', True)]},
     )
     
     recipient_id = fields.Many2one(
@@ -32,7 +31,6 @@ class SaleVoucher(models.Model):
         string='Recipient (Goods Receiver)',
         required=True,
         tracking=True,
-        states={'invoiced': [('readonly', True)], 'cancelled': [('readonly', True)]},
         help='Customer who physically receives the goods',
     )
     
@@ -41,7 +39,6 @@ class SaleVoucher(models.Model):
         'voucher_id',
         string='Products',
         copy=True,
-        states={'invoiced': [('readonly', True)], 'cancelled': [('readonly', True)]},
     )
     
     picking_id = fields.Many2one(
@@ -111,13 +108,11 @@ class SaleVoucher(models.Model):
     
     notes = fields.Text(
         string='Internal Notes',
-        states={'invoiced': [('readonly', True)], 'cancelled': [('readonly', True)]},
     )
     
     internal_reference = fields.Char(
         string='Internal Reference',
         help='Internal tracking code',
-        states={'invoiced': [('readonly', True)], 'cancelled': [('readonly', True)]},
     )
     
     company_id = fields.Many2one(
