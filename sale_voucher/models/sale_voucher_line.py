@@ -100,6 +100,39 @@ class SaleVoucherLine(models.Model):
         string='Company',
     )
     
+    # Invoicing tracking fields
+    qty_invoiced = fields.Float(
+        string='Invoiced Quantity',
+        default=0.0,
+        digits='Product Unit of Measure',
+        help='Quantity already invoiced',
+    )
+    
+    qty_to_invoice = fields.Float(
+        string='To Invoice',
+        compute='_compute_qty_to_invoice',
+        store=True,
+        digits='Product Unit of Measure',
+        help='Quantity remaining to be invoiced',
+    )
+    
+    is_fully_invoiced = fields.Boolean(
+        string='Fully Invoiced',
+        compute='_compute_qty_to_invoice',
+        store=True,
+        help='True when all quantity has been invoiced',
+    )
+    
+    @api.depends('quantity', 'qty_invoiced', 'display_type')
+    def _compute_qty_to_invoice(self):
+        for line in self:
+            if line.display_type:
+                line.qty_to_invoice = 0.0
+                line.is_fully_invoiced = False
+            else:
+                line.qty_to_invoice = line.quantity - line.qty_invoiced
+                line.is_fully_invoiced = line.qty_invoiced >= line.quantity
+    
     @api.depends('quantity', 'price_unit', 'tax_ids', 'display_type')
     def _compute_amount(self):
         for line in self:

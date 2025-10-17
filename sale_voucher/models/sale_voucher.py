@@ -62,20 +62,44 @@ class SaleVoucher(models.Model):
         ('cancelled', 'Cancelled'),
     ], string='Status', default='draft', tracking=True, copy=False)
     
-    invoice_id = fields.Many2one(
+    invoice_ids = fields.One2many(
         'account.move',
-        string='Invoice',
+        'voucher_id',
+        string='Invoices',
         readonly=True,
         copy=False,
+        help='All invoices generated from this voucher',
+    )
+    
+    invoice_count = fields.Integer(
+        string='Invoice Count',
+        compute='_compute_invoice_count',
+        store=True,
+    )
+    
+    # Keep for backward compatibility but deprecated
+    invoice_id = fields.Many2one(
+        'account.move',
+        string='Last Invoice',
+        compute='_compute_invoice_id',
+        store=False,
+        help='Last invoice created (for backward compatibility)',
     )
     
     invoiced_to_id = fields.Many2one(
         'res.partner',
-        string='Invoiced To',
+        string='Last Invoiced To',
         readonly=True,
         copy=False,
         tracking=True,
-        help='Final customer who receives the invoice',
+        help='Last customer who received an invoice',
+    )
+    
+    is_fully_invoiced = fields.Boolean(
+        string='Fully Invoiced',
+        compute='_compute_is_fully_invoiced',
+        store=True,
+        help='True when all lines are fully invoiced',
     )
     
     amount_untaxed = fields.Monetary(
@@ -128,6 +152,32 @@ class SaleVoucher(models.Model):
         default=lambda self: self.env.user,
         tracking=True,
     )
+    
+    active = fields.Boolean(
+        string='Active',
+        default=True,
+        help='Uncheck to archive the voucher. Archived vouchers are hidden by default.',
+    )
+    
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        for voucher in self:
+            voucher.invoice_count = len(voucher.invoice_ids)
+    
+    @api.depends('invoice_ids')
+    def _compute_invoice_id(self):
+        """Get last invoice for backward compatibility"""
+        for voucher in self:
+            voucher.invoice_id = voucher.invoice_ids[:1] if voucher.invoice_ids else False
+    
+    @api.depends('line_ids.is_fully_invoiced')
+    def _compute_is_fully_invoiced(self):
+        for voucher in self:
+            product_lines = voucher.line_ids.filtered(lambda l: not l.display_type)
+            if product_lines:
+                voucher.is_fully_invoiced = all(line.is_fully_invoiced for line in product_lines)
+            else:
+                voucher.is_fully_invoiced = False
     
     @api.depends('line_ids.price_subtotal', 'line_ids.price_tax')
     def _compute_amounts(self):
@@ -321,20 +371,30 @@ class SaleVoucher(models.Model):
         }
     
     def action_view_invoice(self):
-        """Open related invoice"""
+        """Open related invoices"""
         self.ensure_one()
         
-        if not self.invoice_id:
-            raise UserError(_('No invoice found for this voucher.'))
+        if not self.invoice_ids:
+            raise UserError(_('No invoices found for this voucher.'))
         
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Invoice'),
-            'res_model': 'account.move',
-            'res_id': self.invoice_id.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+        if len(self.invoice_ids) == 1:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Invoice'),
+                'res_model': 'account.move',
+                'res_id': self.invoice_ids.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+        else:
+            return {
+                'type': 'ir.actions.act_window',
+                'name': _('Invoices'),
+                'res_model': 'account.move',
+                'view_mode': 'list,form',
+                'domain': [('id', 'in', self.invoice_ids.ids)],
+                'context': {'create': False},
+            }
     
     def action_create_invoice(self):
         """Open wizard to create invoice"""
@@ -343,14 +403,15 @@ class SaleVoucher(models.Model):
         if self.state != 'delivered':
             raise UserError(_('Only delivered vouchers can be invoiced.'))
         
+        if self.is_fully_invoiced:
+            raise UserError(_('All lines have been fully invoiced.'))
+        
         return {
             'type': 'ir.actions.act_window',
             'name': _('Create Invoice'),
-            'res_model': 'voucher.create.invoice',
+            'res_model': 'voucher.create.invoice.wizard',
             'view_mode': 'form',
             'target': 'new',
-            'context': {
-                'default_voucher_ids': [(6, 0, self.ids)],
-            },
+            'context': {'active_id': self.id},
         }
 

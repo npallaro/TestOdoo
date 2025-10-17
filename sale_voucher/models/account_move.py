@@ -6,36 +6,26 @@ from odoo import models, fields, api, _
 class AccountMove(models.Model):
     _inherit = 'account.move'
     
-    voucher_ids = fields.Many2many(
+    voucher_id = fields.Many2one(
         'sale.voucher',
-        'account_move_sale_voucher_rel',
-        'invoice_id',
-        'voucher_id',
-        string='Related Vouchers',
+        string='Related Voucher',
         copy=False,
-        help='Internal sales vouchers included in this invoice',
+        help='Internal sales voucher that generated this invoice',
     )
     
-    voucher_count = fields.Integer(
-        string='Voucher Count',
-        compute='_compute_voucher_count',
-    )
-    
-    @api.depends('voucher_ids')
-    def _compute_voucher_count(self):
-        for move in self:
-            move.voucher_count = len(move.voucher_ids)
-    
-    def action_view_vouchers(self):
-        """Open related vouchers"""
+    def action_view_voucher(self):
+        """Open related voucher"""
         self.ensure_one()
+        
+        if not self.voucher_id:
+            return
         
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Related Vouchers'),
+            'name': _('Related Voucher'),
             'res_model': 'sale.voucher',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', self.voucher_ids.ids)],
-            'context': {'create': False},
+            'res_id': self.voucher_id.id,
+            'view_mode': 'form',
+            'target': 'current',
         }
 
