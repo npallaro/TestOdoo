@@ -34,7 +34,7 @@ class AccountMove(models.Model):
             'type': 'ir.actions.act_window',
             'name': _('Related Vouchers'),
             'res_model': 'sale.voucher',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'domain': [('id', 'in', self.voucher_ids.ids)],
             'context': {'create': False},
         }

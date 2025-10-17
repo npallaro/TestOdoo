@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <!-- Tree View -->
+    <!-- List View -->
     <record id="view_sale_voucher_tree" model="ir.ui.view">
-        <field name="name">sale.voucher.tree</field>
+        <field name="name">sale.voucher.list</field>
         <field name="model">sale.voucher</field>
         <field name="arch" type="xml">
-            <tree string="Sales Vouchers" 
+            <list string="Sales Vouchers" 
                   decoration-info="state=='draft'" 
                   decoration-muted="state=='cancelled'"
                   decoration-success="state=='delivered'">
@@ -25,7 +25,7 @@
                        decoration-muted="state=='cancelled'"/>
                 <field name="invoiced_to_id" optional="show"/>
                 <field name="company_id" groups="base.group_multi_company" optional="show"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -96,7 +96,7 @@
                     <notebook>
                         <page string="Products" name="products">
                             <field name="line_ids" widget="section_and_note_one2many">
-                                <tree editable="bottom">
+                                <list editable="bottom">
                                     <control>
                                         <create string="Add a product"/>
                                         <create string="Add a section" context="{'default_display_type': 'line_section'}"/>
@@ -119,7 +119,7 @@
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="voucher_state" column_invisible="1"/>
                                     <field name="company_id" column_invisible="1"/>
-                                </tree>
+                                </list>
                             </field>
                             <group class="oe_subtotal_footer oe_right">
                                 <field name="amount_untaxed" widget="monetary"/>
