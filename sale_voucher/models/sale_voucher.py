@@ -7,7 +7,7 @@ from odoo.exceptions import UserError, ValidationError
 class SaleVoucher(models.Model):
     _name = 'sale.voucher'
     _description = 'Internal Sales Voucher'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    # _inherit = ['mail.thread', 'mail.activity.mixin']  # Temporarily disabled for debugging
     _order = 'date desc, id desc'
 
     name = fields.Char(
