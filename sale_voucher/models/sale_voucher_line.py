@@ -53,7 +53,6 @@ class SaleVoucherLine(models.Model):
     product_uom_id = fields.Many2one(
         'uom.uom',
         string='Unit of Measure',
-        required=True,
     )
     
     price_unit = fields.Float(
@@ -133,6 +132,21 @@ class SaleVoucherLine(models.Model):
                     'price_tax': 0.0,
                     'price_total': price,
                 })
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create to set default UoM if not provided"""
+        for vals in vals_list:
+            # Skip for display_type lines
+            if vals.get('display_type'):
+                continue
+            
+            # If product_id is set but product_uom_id is not
+            if vals.get('product_id') and not vals.get('product_uom_id'):
+                product = self.env['product.product'].browse(vals['product_id'])
+                vals['product_uom_id'] = product.uom_id.id
+        
+        return super().create(vals_list)
     
     @api.onchange('product_id')
     def _onchange_product_id(self):
