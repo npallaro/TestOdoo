@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ###############################################################################
 #
-#    Custom Development
+#    NPAL srl
 #
-#    Copyright (C) 2024-TODAY Custom Development
-#    Author: Custom Development
+#    Copyright (C) 2024-TODAY NPAL srl
+#    Author: Nicola Pallaro
 #
 #    You can modify it under the terms of the GNU AFFERO
 #    GENERAL PUBLIC LICENSE (AGPL v3), Version 3.
@@ -26,10 +26,10 @@
     'summary': """Allows to create multiple barcode for a single product.""",
     'description': """This module allows to create Product multi barcode for
     Sales, Purchase, Inventory and Invoicing.""",
-    'author': 'Custom Development',
-    'company': 'Custom Development',
-    'maintainer': 'Custom Development',
-    'website': 'https://www.odoo.com',
+    'author': 'NPAL srl',
+    'website': 'https://www.npal.it',
+    'maintainer': 'Nicola Pallaro',
+    'support': 'nicola@npal.it',
     'depends': ['stock', 'sale_management', 'purchase', 'account'],
     'data': [
         'security/ir.model.access.csv',

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 ###############################################################################
 #
-#    Custom Development
+#    NPAL srl
 #
-#    Copyright (C) 2024-TODAY Custom Development
-#    Author: Custom Development
+#    Copyright (C) 2024-TODAY NPAL srl
+#    Author: Nicola Pallaro
 #
 #    You can modify it under the terms of the GNU AFFERO
 #    GENERAL PUBLIC LICENSE (AGPL v3), Version 3.
