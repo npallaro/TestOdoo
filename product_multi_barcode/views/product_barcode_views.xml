@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Product Barcode Tree View -->
+    <record id="view_product_barcode_tree" model="ir.ui.view">
+        <field name="name">product.barcode.tree</field>
+        <field name="model">product.barcode</field>
+        <field name="arch" type="xml">
+            <tree string="Product Barcodes" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name" string="Barcode"/>
+                <field name="product_id" options="{'no_create': True}" optional="show"/>
+                <field name="product_tmpl_id" options="{'no_create': True}" optional="hide"/>
+                <field name="notes" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Product Barcode Form View -->
+    <record id="view_product_barcode_form" model="ir.ui.view">
+        <field name="name">product.barcode.form</field>
+        <field name="model">product.barcode</field>
+        <field name="arch" type="xml">
+            <form string="Product Barcode">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" placeholder="e.g., 5901234123457"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="product_tmpl_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="e.g., Supplier barcode, Internal code, etc."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Product Barcode Search View -->
+    <record id="view_product_barcode_search" model="ir.ui.view">
+        <field name="name">product.barcode.search</field>
+        <field name="model">product.barcode</field>
+        <field name="arch" type="xml">
+            <search string="Search Barcodes">
+                <field name="name" string="Barcode" filter_domain="[('name', 'ilike', self)]"/>
+                <field name="product_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="notes"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="Product Variants" name="product_variants" domain="[('product_id', '!=', False)]"/>
+                <filter string="Product Templates" name="product_templates" domain="[('product_tmpl_id', '!=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Template" name="group_template" context="{'group_by': 'product_tmpl_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Product Barcode Action -->
+    <record id="action_product_barcode" model="ir.actions.act_window">
+        <field name="name">Product Barcodes</field>
+        <field name="res_model">product.barcode</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new barcode
+            </p>
+            <p>
+                Add multiple barcodes to your products to make them easier to find and scan.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_product_barcode"
+        name="Product Barcodes"
+        parent="stock.menu_stock_configuration"
+        action="action_product_barcode"
+        sequence="20"/>
+</odoo>
