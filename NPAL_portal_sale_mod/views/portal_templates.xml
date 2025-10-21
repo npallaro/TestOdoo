@@ -1,0 +1,881 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Template per la lista dei clienti dell'agente -->
+    <template id="portal_my_customers" name="I miei clienti">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">I miei clienti</t>
+            </t>
+
+            <div class="container mt-3">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"/> Questi sono i clienti associati a te come agente di vendita.
+                        </div>
+
+                        <t t-if="not customers">
+                            <div class="alert alert-warning">
+                                <i class="fa fa-warning"/> Non hai ancora clienti associati.
+                            </div>
+                        </t>
+
+                        <t t-else="">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="mb-0">Clienti (<t t-esc="len(customers)"/>)</h4>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Nome</th>
+                                                <th>Email</th>
+                                                <th>Telefono</th>
+                                                <th>Città</th>
+                                                <th class="text-end">Azioni</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="customers" t-as="customer">
+                                                <tr>
+                                                    <td><strong t-field="customer.name"/></td>
+                                                    <td><span t-field="customer.email"/></td>
+                                                    <td><span t-field="customer.phone"/></td>
+                                                    <td><span t-field="customer.city"/></td>
+                                                    <td class="text-end">
+                                                        <a t-attf-href="/my/orders/new?customer_id=#{customer.id}"
+                                                           class="btn btn-sm btn-primary">
+                                                            <i class="fa fa-shopping-cart"/> Crea Ordine
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Template per la selezione del cliente -->
+    <template id="portal_select_customer" name="Seleziona Cliente">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Crea nuovo ordine</t>
+            </t>
+
+            <div class="container mt-3">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h4 class="mb-0"><i class="fa fa-user"/> Seleziona il cliente</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">
+                                    Seleziona il cliente per il quale vuoi creare un nuovo ordine.
+                                </p>
+
+                                <!-- Campo di ricerca clienti -->
+                                <div class="mb-3">
+                                    <input type="text" class="form-control" id="customerSearch" placeholder="Cerca cliente per nome, email, città..."/>
+                                </div>
+
+                                <div class="list-group" id="customerList">
+                                    <t t-foreach="customers" t-as="customer">
+                                        <a t-attf-href="/my/orders/new?customer_id=#{customer.id}"
+                                           class="list-group-item list-group-item-action">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h5 class="mb-1">
+                                                    <i class="fa fa-building-o"/> <t t-esc="customer.name"/>
+                                                </h5>
+                                                <small class="text-muted">
+                                                    <i class="fa fa-arrow-right"/>
+                                                </small>
+                                            </div>
+                                            <p class="mb-1">
+                                                <t t-if="customer.email">
+                                                    <i class="fa fa-envelope-o"/> <t t-esc="customer.email"/>
+                                                </t>
+                                                <t t-if="customer.phone">
+                                                    | <i class="fa fa-phone"/> <t t-esc="customer.phone"/>
+                                                </t>
+                                            </p>
+                                            <small>
+                                                <t t-if="customer.street">
+                                                    <t t-esc="customer.street"/>
+                                                    <t t-if="customer.city">
+                                                        - <t t-esc="customer.city"/>
+                                                    </t>
+                                                </t>
+                                            </small>
+                                        </a>
+                                    </t>
+                                </div>
+
+                                <div class="mt-3">
+                                    <a href="/my/home" class="btn btn-secondary">
+                                        <i class="fa fa-arrow-left"/> Torna al Portale
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Template quando non ci sono clienti -->
+    <template id="portal_no_customers" name="Nessun Cliente">
+        <t t-call="portal.portal_layout">
+            <div class="container mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-lg-6">
+                        <div class="alert alert-warning text-center">
+                            <h4><i class="fa fa-exclamation-triangle"/> Nessun cliente associato</h4>
+                            <p>Non hai ancora clienti associati al tuo account.</p>
+                            <p>Contatta l'amministratore per associare dei clienti al tuo profilo.</p>
+                            <a href="/my/home" class="btn btn-primary mt-3">
+                                <i class="fa fa-arrow-left"/> Torna al Portale
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Aggiungi sezione agente nella home del portale -->
+    <template id="portal_my_home_agent_section" name="Portal Agent Section" inherit_id="portal.portal_my_home" priority="10">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="before">
+            <t t-set="agent_customers" t-value="request.env.user.partner_id.get_agent_customers()"/>
+            <t t-if="agent_customers">
+                <div class="col-12 mb-4">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="fa fa-briefcase"/> Area Agente</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h5><i class="fa fa-users"/> I tuoi clienti</h5>
+                                    <p class="text-muted mb-2">Hai <strong><t t-esc="len(agent_customers)"/> clienti</strong> associati</p>
+                                    <a href="/my/customers" class="btn btn-outline-primary">
+                                        <i class="fa fa-list"/> Visualizza clienti
+                                    </a>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h5><i class="fa fa-shopping-cart"/> Crea nuovo ordine</h5>
+                                    <p class="text-muted mb-2">Crea un ordine per uno dei tuoi clienti</p>
+                                    <a href="/my/orders/new" class="btn btn-primary">
+                                        <i class="fa fa-plus-circle"/> Nuovo ordine
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Template per finalizzazione carrello agente -->
+    <template id="agent_cart_finalize" name="Agent Cart Finalize">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_text_block pt32 pb32 o_colored_level">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-lg-8 offset-lg-2">
+                                <h1 class="text-center mb-4">Finalizza Ordine</h1>
+
+                                <div class="alert alert-info">
+                                    <strong><i class="fa fa-info-circle"/> Stai creando un ordine per:</strong>
+                                    <br/>
+                                    <span class="h5"><t t-esc="customer.name"/></span>
+                                </div>
+
+                                <!-- Riepilogo ordine -->
+                                <div class="card mb-4">
+                                    <div class="card-header bg-primary text-white">
+                                        <h4 class="mb-0">Riepilogo Ordine</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Prodotto</th>
+                                                    <th class="text-end">Quantità</th>
+                                                    <th class="text-end">Prezzo</th>
+                                                    <th class="text-end">Subtotale</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="order.order_line" t-as="line">
+                                                    <tr>
+                                                        <td><t t-esc="line.product_id.name"/></td>
+                                                        <td class="text-end"><t t-esc="line.product_uom_qty"/></td>
+                                                        <td class="text-end"><t t-esc="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></td>
+                                                        <td class="text-end"><t t-esc="line.price_subtotal" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="border-top">
+                                                    <td colspan="3" class="text-end"><strong>Totale:</strong></td>
+                                                    <td class="text-end"><strong><t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></strong></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Form campi obbligatori -->
+                                <div class="card mb-4">
+                                    <div class="card-header bg-warning">
+                                        <h4 class="mb-0">Dettagli Consegna (obbligatori)</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="orderDetailsForm">
+                                            <!-- CSRF Token -->
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required">Magazzino *</label>
+                                                    <select name="warehouse_id" class="form-select" required="required">
+                                                        <option value="">Seleziona magazzino...</option>
+                                                        <t t-foreach="warehouses" t-as="warehouse">
+                                                            <option t-att-value="warehouse.id" t-esc="warehouse.name"/>
+                                                        </t>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required">Data Consegna *</label>
+                                                    <input type="datetime-local" name="delivery_date" class="form-control" required="required"/>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required">Metodo di Trasporto *</label>
+                                                    <select name="transport_method" class="form-select" required="required">
+                                                        <option value="">Seleziona metodo...</option>
+                                                        <option value="sender">Mittente</option>
+                                                        <option value="recipient">Destinatario</option>
+                                                        <option value="carrier">Vettore</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label required">Indirizzo di Spedizione *</label>
+                                                    <select name="shipping_address_id" class="form-select" required="required">
+                                                        <option value="">Seleziona indirizzo...</option>
+                                                        <t t-foreach="shipping_addresses" t-as="address">
+                                                            <option t-att-value="address.id">
+                                                                <t t-esc="address.name"/> - <t t-esc="address.street"/>, <t t-esc="address.city"/>
+                                                            </option>
+                                                        </t>
+                                                    </select>
+                                                    <small class="text-muted">
+                                                        <a href="#" data-bs-toggle="modal" data-bs-target="#addAddressModal">+ Aggiungi nuovo indirizzo</a>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Form scelta tipo documento -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h4 class="mb-0">Cosa vuoi creare?</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <div class="card h-100 border-primary">
+                                                    <div class="card-body text-center">
+                                                        <h5 class="card-title"><i class="fa fa-file-text-o fa-3x mb-3 text-primary"/></h5>
+                                                        <h5>Preventivo</h5>
+                                                        <p class="text-muted">Crea un preventivo in bozza che potrà essere modificato dal backoffice</p>
+                                                        <button type="button" class="btn btn-outline-primary btn-lg" onclick="submitOrderForm('quotation')">
+                                                            <i class="fa fa-file-text"/> Crea Preventivo
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="card h-100 border-success">
+                                                    <div class="card-body text-center">
+                                                        <h5 class="card-title"><i class="fa fa-shopping-cart fa-3x mb-3 text-success"/></h5>
+                                                        <h5>Ordine</h5>
+                                                        <p class="text-muted">Crea un ordine in attesa di conferma dal backoffice</p>
+                                                        <button type="button" class="btn btn-success btn-lg" onclick="submitOrderForm('order')">
+                                                            <i class="fa fa-check"/> Crea Ordine
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <t t-if="voucher_module_installed">
+                                                <div class="col-md-4 mb-3">
+                                                    <div class="card h-100 border-info">
+                                                        <div class="card-body text-center">
+                                                            <h5 class="card-title"><i class="fa fa-ticket fa-3x mb-3 text-info"/></h5>
+                                                            <h5>Buono Interno</h5>
+                                                            <p class="text-muted">Crea un buono di consegna interno (richiede modulo sale_voucher)</p>
+                                                            <button type="button" class="btn btn-info btn-lg" onclick="submitOrderForm('voucher')">
+                                                                <i class="fa fa-ticket"/> Crea Buono
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+
+                                        <!-- Campo note -->
+                                        <div class="mt-3">
+                                            <label class="form-label">Note (opzionale)</label>
+                                            <textarea id="orderNote" class="form-control" rows="3" placeholder="Aggiungi note per il backoffice..."></textarea>
+                                        </div>
+
+                                        <div class="text-center mt-3">
+                                            <a href="/shop/cart" class="btn btn-secondary">
+                                                <i class="fa fa-arrow-left"/> Torna al Carrello
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Modal per aggiungere nuovo indirizzo -->
+                <div class="modal fade" id="addAddressModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Aggiungi Nuovo Indirizzo</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"/>
+                            </div>
+                            <form id="addAddressForm" action="/my/orders/add_address" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="customer_id" t-att-value="customer.id"/>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label required">Nome Indirizzo *</label>
+                                        <input type="text" name="address_name" class="form-control" required="required" placeholder="es: Sede centrale, Magazzino, etc."/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label required">Indirizzo *</label>
+                                        <input type="text" name="street" class="form-control" required="required"/>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label required">Città *</label>
+                                            <input type="text" name="city" class="form-control" required="required"/>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label required">CAP *</label>
+                                            <input type="text" name="zip" class="form-control" required="required"/>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Paese</label>
+                                            <select name="country_id" id="country_select" class="form-select">
+                                                <option value="">Seleziona paese...</option>
+                                                <t t-foreach="request.env['res.country'].sudo().search([('code', '=', 'IT')])" t-as="country">
+                                                    <option t-att-value="country.id" t-esc="country.name" selected="selected"/>
+                                                </t>
+                                                <t t-foreach="request.env['res.country'].sudo().search([('code', '!=', 'IT')], order='name')" t-as="country">
+                                                    <option t-att-value="country.id" t-esc="country.name"/>
+                                                </t>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label">Provincia</label>
+                                            <select name="state_id" id="state_select" class="form-select">
+                                                <option value="">Seleziona provincia...</option>
+                                                <t t-foreach="request.env['res.country.state'].sudo().search([('country_id.code', '=', 'IT')], order='name')" t-as="state">
+                                                    <option t-att-value="state.id" t-att-data-country="state.country_id.id" t-esc="state.name"/>
+                                                </t>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                                    <button type="submit" class="btn btn-primary">Salva Indirizzo</button>
+                                </div>
+                            </form>
+
+                            <script type="text/javascript">
+                                <![CDATA[
+                                // Filtra province in base al paese selezionato
+                                document.getElementById('country_select').addEventListener('change', function() {
+                                    var countryId = this.value;
+                                    var stateSelect = document.getElementById('state_select');
+                                    var options = stateSelect.querySelectorAll('option[data-country]');
+
+                                    // Mostra/nascondi province in base al paese
+                                    options.forEach(function(option) {
+                                        if (!countryId || option.getAttribute('data-country') === countryId) {
+                                            option.style.display = '';
+                                        } else {
+                                            option.style.display = 'none';
+                                        }
+                                    });
+
+                                    // Reset selezione provincia se non compatibile
+                                    var selectedOption = stateSelect.options[stateSelect.selectedIndex];
+                                    if (selectedOption && selectedOption.getAttribute('data-country') !== countryId && countryId) {
+                                        stateSelect.value = '';
+                                    }
+                                });
+                                ]]>
+                            </script>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JavaScript inline per submit form -->
+                <script type="text/javascript">
+                    <![CDATA[
+                    function submitOrderForm(type) {
+                        const form = document.getElementById('orderDetailsForm');
+                        if (!form.checkValidity()) {
+                            form.reportValidity();
+                            return false;
+                        }
+
+                        const formData = new FormData(form);
+                        const note = document.getElementById('orderNote').value;
+
+                        // Crea form nascosto e submit
+                        const submitForm = document.createElement('form');
+                        submitForm.method = 'POST';
+                        submitForm.action = type === 'quotation' ? '/shop/agent/create_quotation' :
+                                           type === 'order' ? '/shop/agent/create_order' :
+                                           '/shop/agent/create_voucher';
+
+                        // Aggiungi CSRF token
+                        const csrf = document.querySelector('input[name="csrf_token"]');
+                        if (csrf) {
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = 'csrf_token';
+                            csrfInput.value = csrf.value;
+                            submitForm.appendChild(csrfInput);
+                        }
+
+                        // Aggiungi tutti i campi
+                        for (let pair of formData.entries()) {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = pair[0];
+                            input.value = pair[1];
+                            submitForm.appendChild(input);
+                        }
+
+                        // Aggiungi note
+                        const noteInput = document.createElement('input');
+                        noteInput.type = 'hidden';
+                        noteInput.name = 'order_note';
+                        noteInput.value = note;
+                        submitForm.appendChild(noteInput);
+
+                        document.body.appendChild(submitForm);
+                        submitForm.submit();
+                    }
+                    ]]>
+                </script>
+            </div>
+        </t>
+    </template>
+
+    <!-- Template per conferma ordine/preventivo/buono creato -->
+    <template id="agent_order_confirmation" name="Agent Order Confirmation">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure oe_empty">
+                <section class="s_text_block pt32 pb32 o_colored_level">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-lg-6 offset-lg-3">
+                                <div class="text-center mb-4">
+                                    <i t-if="is_voucher" class="fa fa-ticket fa-5x text-info mb-3"/>
+                                    <i t-elif="is_quotation" class="fa fa-file-text-o fa-5x text-primary mb-3"/>
+                                    <i t-else="" class="fa fa-check-circle fa-5x text-success mb-3"/>
+                                    <h1 t-if="is_voucher">Buono Interno Creato!</h1>
+                                    <h1 t-elif="is_quotation">Preventivo Creato!</h1>
+                                    <h1 t-else="">Ordine Creato!</h1>
+                                </div>
+
+                                <!-- Alert per Voucher -->
+                                <div t-if="is_voucher" class="alert alert-info">
+                                    <h4 class="alert-heading">
+                                        Buono <strong><t t-esc="voucher.name"/></strong> creato con successo!
+                                    </h4>
+                                    <hr/>
+                                    <p class="mb-0">
+                                        Il buono interno è stato creato e può essere gestito dal backoffice. Non è un documento fiscale.
+                                    </p>
+                                </div>
+
+                                <!-- Alert per Ordine/Preventivo -->
+                                <div t-if="not is_voucher" class="alert alert-success">
+                                    <h4 class="alert-heading">
+                                        <t t-if="is_quotation">Preventivo</t>
+                                        <t t-else="">Ordine</t>
+                                        <strong><t t-esc="order.name"/></strong> creato con successo!
+                                    </h4>
+                                    <hr/>
+                                    <p class="mb-0">
+                                        <t t-if="is_quotation">
+                                            Il preventivo è stato creato in bozza e può essere modificato dal backoffice prima dell'invio al cliente.
+                                        </t>
+                                        <t t-else="">
+                                            L'ordine è in attesa di conferma dal backoffice. Una volta confermato, verrà processato.
+                                        </t>
+                                    </p>
+                                </div>
+
+                                <!-- Dettagli Voucher -->
+                                <div t-if="is_voucher" class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Dettagli Buono</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <dl class="row mb-0">
+                                            <dt class="col-sm-4">Numero Buono:</dt>
+                                            <dd class="col-sm-8"><t t-esc="voucher.name"/></dd>
+
+                                            <dt class="col-sm-4">Destinatario:</dt>
+                                            <dd class="col-sm-8"><t t-esc="voucher.recipient_id.name"/></dd>
+
+                                            <dt class="col-sm-4">Data:</dt>
+                                            <dd class="col-sm-8"><t t-esc="voucher.date" t-options="{'widget': 'date'}"/></dd>
+
+                                            <dt class="col-sm-4" t-if="voucher.warehouse_id">Magazzino:</dt>
+                                            <dd class="col-sm-8" t-if="voucher.warehouse_id"><t t-esc="voucher.warehouse_id.name"/></dd>
+
+                                            <dt class="col-sm-4">Stato:</dt>
+                                            <dd class="col-sm-8">
+                                                <span class="badge bg-secondary">Bozza</span>
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                </div>
+
+                                <!-- Dettagli Ordine/Preventivo -->
+                                <div t-if="not is_voucher" class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Dettagli</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <dl class="row mb-0">
+                                            <dt class="col-sm-4">Numero:</dt>
+                                            <dd class="col-sm-8"><t t-esc="order.name"/></dd>
+
+                                            <dt class="col-sm-4">Cliente:</dt>
+                                            <dd class="col-sm-8"><t t-esc="order.partner_id.name"/></dd>
+
+                                            <dt class="col-sm-4">Data:</dt>
+                                            <dd class="col-sm-8"><t t-esc="order.date_order" t-options="{'widget': 'date'}"/></dd>
+
+                                            <dt class="col-sm-4">Totale:</dt>
+                                            <dd class="col-sm-8"><strong><t t-esc="order.amount_total" t-options="{'widget': 'monetary', 'display_currency': order.currency_id}"/></strong></dd>
+
+                                            <dt class="col-sm-4">Stato:</dt>
+                                            <dd class="col-sm-8">
+                                                <span t-if="order.state == 'draft'" class="badge bg-secondary">Preventivo</span>
+                                                <span t-elif="order.state == 'sent'" class="badge bg-info">Inviato</span>
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                </div>
+
+                                <!-- Azioni -->
+                                <div class="text-center">
+                                    <!-- Link voucher -->
+                                    <t t-if="is_voucher">
+                                        <a t-attf-href="/my/vouchers/#{voucher.id}" class="btn btn-info btn-lg mb-2">
+                                            <i class="fa fa-eye"/> Visualizza Buono
+                                        </a>
+                                    </t>
+                                    <!-- Link ordine -->
+                                    <t t-if="not is_voucher">
+                                        <a t-attf-href="/my/orders/#{order.id}" class="btn btn-primary btn-lg mb-2">
+                                            <i class="fa fa-eye"/> Visualizza Dettagli
+                                        </a>
+                                    </t>
+                                    <br/>
+                                    <a href="/my/orders/new" class="btn btn-outline-primary">
+                                        <i class="fa fa-plus"/> Crea altro ordine
+                                    </a>
+                                    <a href="/my/home" class="btn btn-outline-secondary">
+                                        <i class="fa fa-home"/> Torna al Portale
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </t>
+    </template>
+
+    <!-- Indicatore cliente selezionato (sticky top bar) -->
+    <template id="agent_customer_indicator" name="Agent Customer Indicator" inherit_id="website.layout" priority="5">
+        <xpath expr="//main" position="before">
+            <t t-set="agent_customer_id" t-value="request.session.get('agent_selected_customer_id')"/>
+            <t t-if="agent_customer_id and request.env.user.has_group('base.group_portal')">
+                <t t-set="selected_customer" t-value="request.env['res.partner'].sudo().browse(agent_customer_id)"/>
+                <t t-if="selected_customer.exists()">
+                    <div class="alert alert-info mb-0 rounded-0 border-0 border-bottom" style="position: sticky; top: 0; z-index: 1029; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div class="container">
+                            <div class="row align-items-center py-2">
+                                <div class="col-md-8">
+                                    <i class="fa fa-user-circle-o fa-lg me-2"/>
+                                    <strong>Stai ordinando per:</strong>
+                                    <span class="badge bg-primary ms-2" style="font-size: 1rem;">
+                                        <t t-esc="selected_customer.name"/>
+                                    </span>
+                                    <t t-if="selected_customer.property_product_pricelist">
+                                        <small class="ms-2 text-muted">
+                                            (Listino: <t t-esc="selected_customer.property_product_pricelist.name"/>)
+                                        </small>
+                                    </t>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <a href="/my/orders/change_customer" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="fa fa-exchange"/> Cambia Cliente
+                                    </a>
+                                    <a href="#" onclick="return clearCustomerSelection();" class="btn btn-sm btn-outline-danger">
+                                        <i class="fa fa-times"/> Annulla
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Template per visualizzazione stock sulla pagina prodotto -->
+    <template id="product_stock_info" name="Product Stock Info" inherit_id="website_sale.product">
+        <xpath expr="//div[@id='product_details']//form[@action='/shop/cart/update']" position="inside">
+            <!-- Mostra solo per utenti portale (agenti) -->
+            <t t-if="request.env.user.has_group('base.group_portal') and not request.env.user._is_public()">
+                <div class="mt-3 mb-3 border-top pt-3">
+                    <h5 class="mb-3">Verifica Disponibilità Magazzino</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold">Seleziona Magazzino</label>
+                            <select id="warehouse_stock_selector" class="form-select">
+                                <option value="">Seleziona magazzino...</option>
+                                <t t-foreach="request.env['stock.warehouse'].sudo().search([])" t-as="wh">
+                                    <option t-att-value="wh.id" t-esc="wh.name"/>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold">Quantità Disponibile</label>
+                            <div id="stock_info" class="alert alert-info mb-0 py-2">
+                                <i class="fa fa-info-circle"/> Seleziona un magazzino
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JavaScript per aggiornare stock -->
+                <script type="text/javascript">
+                    <![CDATA[
+                    (function() {
+                        'use strict';
+
+                        var currentProductId = null;
+
+                        function updateStock() {
+                            console.log('updateStock chiamata');
+
+                            var warehouseSelector = document.getElementById('warehouse_stock_selector');
+                            var stockInfoDiv = document.getElementById('stock_info');
+                            var productIdInput = document.querySelector('input[name="product_id"]');
+
+                            if (!warehouseSelector || !stockInfoDiv) {
+                                console.error('Elementi non trovati nel DOM');
+                                return;
+                            }
+
+                            var warehouseId = warehouseSelector.value;
+                            var productId = currentProductId || (productIdInput ? productIdInput.value : null);
+
+                            console.log('Warehouse ID:', warehouseId);
+                            console.log('Product ID:', productId);
+
+                            if (!warehouseId || !productId) {
+                                stockInfoDiv.className = 'alert alert-info mb-0 py-2';
+                                stockInfoDiv.innerHTML = '<i class="fa fa-info-circle"></i> Seleziona un magazzino';
+                                return;
+                            }
+
+                            stockInfoDiv.className = 'alert alert-info mb-0 py-2';
+                            stockInfoDiv.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Caricamento...';
+
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('POST', '/shop/product/stock', true);
+                            xhr.setRequestHeader('Content-Type', 'application/json');
+
+                            xhr.onload = function() {
+                                console.log('Risposta ricevuta:', xhr.status, xhr.responseText);
+
+                                if (xhr.status === 200) {
+                                    try {
+                                        var response = JSON.parse(xhr.responseText);
+                                        console.log('Response parsed:', response);
+
+                                        if (response.result && response.result.qty_available !== undefined) {
+                                            var data = response.result;
+                                            var qty = parseFloat(data.qty_available);
+                                            var alertClass = qty > 0 ? 'alert-success' : 'alert-warning';
+                                            var icon = qty > 0 ? 'fa-check-circle' : 'fa-exclamation-triangle';
+
+                                            stockInfoDiv.className = 'alert ' + alertClass + ' mb-0 py-2';
+                                            stockInfoDiv.innerHTML = '<i class="fa ' + icon + '"></i> ' +
+                                                qty.toFixed(2) + ' ' + (data.uom_name || 'unità');
+                                        } else if (response.result && response.result.error) {
+                                            stockInfoDiv.className = 'alert alert-danger mb-0 py-2';
+                                            stockInfoDiv.innerHTML = '<i class="fa fa-times-circle"></i> ' + response.result.error;
+                                        } else {
+                                            stockInfoDiv.className = 'alert alert-danger mb-0 py-2';
+                                            stockInfoDiv.innerHTML = '<i class="fa fa-times-circle"></i> Errore nel recupero dati';
+                                        }
+                                    } catch (e) {
+                                        console.error('Errore parsing JSON:', e);
+                                        stockInfoDiv.className = 'alert alert-danger mb-0 py-2';
+                                        stockInfoDiv.innerHTML = '<i class="fa fa-times-circle"></i> Errore nel parsing della risposta';
+                                    }
+                                } else {
+                                    console.error('Errore HTTP:', xhr.status);
+                                    stockInfoDiv.className = 'alert alert-danger mb-0 py-2';
+                                    stockInfoDiv.innerHTML = '<i class="fa fa-times-circle"></i> Errore di connessione (HTTP ' + xhr.status + ')';
+                                }
+                            };
+
+                            xhr.onerror = function() {
+                                console.error('Errore nella richiesta AJAX');
+                                stockInfoDiv.className = 'alert alert-danger mb-0 py-2';
+                                stockInfoDiv.innerHTML = '<i class="fa fa-times-circle"></i> Errore di connessione';
+                            };
+
+                            var requestData = {
+                                jsonrpc: '2.0',
+                                method: 'call',
+                                params: {
+                                    product_id: parseInt(productId),
+                                    warehouse_id: parseInt(warehouseId)
+                                }
+                            };
+
+                            console.log('Invio richiesta:', requestData);
+                            xhr.send(JSON.stringify(requestData));
+                        }
+
+                        // Inizializzazione quando il DOM è pronto
+                        function init() {
+                            console.log('Inizializzazione stock checker');
+
+                            var warehouseSelector = document.getElementById('warehouse_stock_selector');
+                            if (warehouseSelector) {
+                                warehouseSelector.addEventListener('change', function() {
+                                    console.log('Warehouse selector cambiato:', this.value);
+                                    updateStock();
+                                });
+                            } else {
+                                console.error('warehouse_stock_selector non trovato');
+                            }
+
+                            // Monitora cambio product_id (varianti)
+                            var productIdInput = document.querySelector('input[name="product_id"]');
+                            if (productIdInput) {
+                                productIdInput.addEventListener('change', function() {
+                                    console.log('Product ID cambiato:', this.value);
+                                    currentProductId = this.value;
+                                    updateStock();
+                                });
+                            }
+
+                            // Monitora radio button delle varianti
+                            var variantRadios = document.querySelectorAll('input[type="radio"][name^="ptal_"]');
+                            variantRadios.forEach(function(radio) {
+                                radio.addEventListener('change', function() {
+                                    console.log('Variante cambiata');
+                                    setTimeout(function() {
+                                        var productInput = document.querySelector('input[name="product_id"]');
+                                        if (productInput) {
+                                            currentProductId = productInput.value;
+                                            console.log('Product ID aggiornato:', currentProductId);
+                                            updateStock();
+                                        }
+                                    }, 300);
+                                });
+                            });
+                        }
+
+                        // Avvia quando il DOM è pronto
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', init);
+                        } else {
+                            init();
+                        }
+                    })();
+                    ]]>
+                </script>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- JavaScript per ricerca clienti -->
+    <template id="portal_customer_search_js" name="Customer Search JS" inherit_id="portal_select_customer">
+        <xpath expr="//div[@class='card-body']" position="after">
+            <script type="text/javascript">
+                <![CDATA[
+                // Ricerca clienti
+                document.addEventListener('DOMContentLoaded', function() {
+                    const searchInput = document.getElementById('customerSearch');
+                    const customerList = document.getElementById('customerList');
+
+                    if (searchInput && customerList) {
+                        searchInput.addEventListener('keyup', function() {
+                            const filter = this.value.toLowerCase();
+                            const items = customerList.getElementsByClassName('list-group-item');
+
+                            for (let i = 0; i < items.length; i++) {
+                                const text = items[i].textContent || items[i].innerText;
+                                if (text.toLowerCase().indexOf(filter) > -1) {
+                                    items[i].style.display = "";
+                                } else {
+                                    items[i].style.display = "none";
+                                }
+                            }
+                        });
+                    }
+                });
+                ]]>
+            </script>
+        </xpath>
+    </template>
+
+</odoo>

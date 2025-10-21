@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form view estesa per sale.order -->
+    <record id="view_order_form_inherit_agent" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.agent</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Campo nascosto per is_agent_order -->
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="is_agent_order" invisible="1"/>
+                <field name="created_by_agent_id" readonly="1" invisible="not is_agent_order"/>
+            </xpath>
+
+            <!-- Aggiungi campi agente sotto il metodo di pagamento -->
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="warehouse_id" invisible="not is_agent_order" required="is_agent_order"/>
+                <field name="commitment_date" invisible="not is_agent_order" required="is_agent_order"/>
+                <field name="agent_transport_method" invisible="not is_agent_order" required="is_agent_order"/>
+            </xpath>
+
+            <!-- Rendi il campo partner_shipping_id richiesto per ordini agente -->
+            <xpath expr="//field[@name='partner_shipping_id']" position="attributes">
+                <attribute name="required">is_agent_order</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Tree view estesa per sale.order -->
+    <record id="view_order_tree_inherit_agent" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.agent</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="created_by_agent_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Aggiungi filtro per ordini creati da agenti -->
+    <record id="view_sales_order_filter_inherit_agent" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.agent</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                <separator/>
+                <filter string="Ordini da Agenti" name="agent_orders" domain="[('is_agent_order', '=', True)]"/>
+                <filter string="Ordini Diretti" name="direct_orders" domain="[('is_agent_order', '=', False)]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Agente Creatore" name="group_by_agent" context="{'group_by': 'created_by_agent_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

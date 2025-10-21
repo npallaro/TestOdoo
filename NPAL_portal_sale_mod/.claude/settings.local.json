@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Read(//Users/nicola/Documents/GitHub/ColoreriaCamolei/**)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd manual stock availability checker with button\n\nImplemented stock availability display on product page with:\n- Warehouse selection dropdown\n- Manual \"Aggiorna Disponibilità\" button for checking stock\n- Real-time stock display for selected warehouse and product variant\n- Responsive 3-column layout (warehouse | button | stock info)\n- Variant change monitoring without auto-update\n\nThe manual button approach provides better UX and control over when\nstock queries are executed, as suggested by the user.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

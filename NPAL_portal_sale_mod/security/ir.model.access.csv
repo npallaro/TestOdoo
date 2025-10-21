@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_order_portal_agent,sale.order.portal.agent,sale.model_sale_order,base.group_portal,1,1,1,0
+access_sale_order_line_portal_agent,sale.order.line.portal.agent,sale.model_sale_order_line,base.group_portal,1,1,1,1
+access_product_product_portal_agent,product.product.portal.agent,product.model_product_product,base.group_portal,1,0,0,0
+access_product_template_portal_agent,product.template.portal.agent,product.model_product_template,base.group_portal,1,0,0,0
+access_product_pricelist_portal_agent,product.pricelist.portal.agent,product.model_product_pricelist,base.group_portal,1,0,0,0
+access_res_partner_portal_agent,res.partner.portal.agent,base.model_res_partner,base.group_portal,1,0,0,0
+access_res_country_portal_agent,res.country.portal.agent,base.model_res_country,base.group_portal,1,0,0,0
+access_res_country_state_portal_agent,res.country.state.portal.agent,base.model_res_country_state,base.group_portal,1,0,0,0
+access_account_fiscal_position_portal,account.fiscal.position.portal,account.model_account_fiscal_position,base.group_portal,1,0,0,0
+access_delivery_carrier_portal,delivery.carrier.portal,delivery.model_delivery_carrier,base.group_portal,1,0,0,0

@@ -1,0 +1,76 @@
+/* NPAL Portal Sale Mod - Custom Styles */
+
+/* Customer selection page */
+.portal-customer-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.portal-customer-card:hover {
+    border-left-color: #007bff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateX(5px);
+}
+
+/* Selected customer indicator */
+.alert-customer-selected {
+    position: sticky;
+    top: 70px;
+    z-index: 100;
+    border-left: 4px solid #0066cc;
+    background-color: #e7f3ff;
+}
+
+.alert-customer-selected .btn-close {
+    cursor: pointer;
+}
+
+/* Customer list table */
+.customer-list-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.customer-list-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Portal home customer card */
+.o_portal_docs .card {
+    transition: transform 0.2s ease;
+}
+
+.o_portal_docs .card:hover {
+    transform: translateY(-5px);
+}
+
+/* Customer selection list */
+.list-group-item.customer-select-item {
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.list-group-item.customer-select-item:hover {
+    border-left-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+/* Badge for agent orders */
+.badge-agent-order {
+    background-color: #6c757d;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .alert-customer-selected {
+        position: relative;
+        top: 0;
+    }
+
+    .portal-customer-card {
+        margin-bottom: 1rem;
+    }
+}
