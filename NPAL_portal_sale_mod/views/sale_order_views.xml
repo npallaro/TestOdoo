@@ -13,11 +13,19 @@
                 <field name="created_by_agent_id" readonly="1" invisible="not is_agent_order"/>
             </xpath>
 
+            <!-- Aggiungi stato operativo in header -->
+            <xpath expr="//header" position="inside">
+                <field name="agent_order_status" widget="statusbar"
+                       options="{'clickable': '1'}"
+                       statusbar_visible="quotation,agent_incoming,in_production,ready_warehouse,ready_pickup,ready_delivery,completed"/>
+            </xpath>
+
             <!-- Aggiungi campi agente sotto il metodo di pagamento -->
             <xpath expr="//field[@name='payment_term_id']" position="after">
-                <field name="warehouse_id" invisible="not is_agent_order" required="is_agent_order"/>
-                <field name="commitment_date" invisible="not is_agent_order" required="is_agent_order"/>
-                <field name="agent_transport_method" invisible="not is_agent_order" required="is_agent_order"/>
+                <field name="warehouse_id" required="is_agent_order"/>
+                <field name="commitment_date" required="is_agent_order"/>
+                <field name="agent_transport_method" required="is_agent_order"/>
+                <field name="agent_status_date" readonly="1"/>
             </xpath>
 
             <!-- Rendi il campo partner_shipping_id richiesto per ordini agente -->
@@ -35,6 +43,13 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="created_by_agent_id" optional="hide"/>
+                <field name="agent_order_status" optional="show" widget="badge"
+                       decoration-info="agent_order_status == 'quotation'"
+                       decoration-warning="agent_order_status == 'agent_incoming'"
+                       decoration-primary="agent_order_status in ['in_production', 'ready_warehouse']"
+                       decoration-success="agent_order_status in ['ready_pickup', 'ready_delivery']"
+                       decoration-muted="agent_order_status == 'completed'"
+                       decoration-danger="agent_order_status in ['waiting_info', 'supplier_order']"/>
             </xpath>
         </field>
     </record>
@@ -49,9 +64,20 @@
                 <separator/>
                 <filter string="Ordini da Agenti" name="agent_orders" domain="[('is_agent_order', '=', True)]"/>
                 <filter string="Ordini Diretti" name="direct_orders" domain="[('is_agent_order', '=', False)]"/>
+                <separator/>
+                <filter string="Preventivi" name="filter_quotation" domain="[('agent_order_status', '=', 'quotation')]"/>
+                <filter string="In Entrata da Agente" name="filter_agent_incoming" domain="[('agent_order_status', '=', 'agent_incoming')]"/>
+                <filter string="In Produzione" name="filter_in_production" domain="[('agent_order_status', '=', 'in_production')]"/>
+                <filter string="Da Inserire in Baia" name="filter_ready_warehouse" domain="[('agent_order_status', '=', 'ready_warehouse')]"/>
+                <filter string="Pronto in Baia" name="filter_ready_pickup" domain="[('agent_order_status', '=', 'ready_pickup')]"/>
+                <filter string="Pronto Consegna NOI" name="filter_ready_delivery" domain="[('agent_order_status', '=', 'ready_delivery')]"/>
+                <filter string="Completati" name="filter_completed" domain="[('agent_order_status', '=', 'completed')]"/>
+                <filter string="In Attesa Info" name="filter_waiting_info" domain="[('agent_order_status', '=', 'waiting_info')]"/>
+                <filter string="In Ordine Fornitore" name="filter_supplier_order" domain="[('agent_order_status', '=', 'supplier_order')]"/>
             </xpath>
             <xpath expr="//group" position="inside">
                 <filter string="Agente Creatore" name="group_by_agent" context="{'group_by': 'created_by_agent_id'}"/>
+                <filter string="Stato Operativo" name="group_by_agent_status" context="{'group_by': 'agent_order_status'}"/>
             </xpath>
         </field>
     </record>

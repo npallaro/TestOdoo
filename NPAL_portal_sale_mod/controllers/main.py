@@ -14,7 +14,6 @@ class WebsiteSaleAgent(WebsiteSale):
             return []
         return super()._get_mandatory_fields_billing()
 
-    @http.route()
     def shop(self, page=0, category=None, search='', min_price=0.0, max_price=0.0, **post):
         """
         Override dello shop per applicare il listino del cliente selezionato.
@@ -57,7 +56,6 @@ class WebsiteSaleAgent(WebsiteSale):
 
         return values
 
-    @http.route()
     def cart(self, **post):
         """
         Override del carrello per gestire il partner del cliente selezionato.
@@ -118,7 +116,6 @@ class WebsiteSaleAgent(WebsiteSale):
 
         return super().checkout(**post)
 
-    @http.route()
     def address(self, **kw):
         """
         Override per gestire gli indirizzi del cliente selezionato.
@@ -139,7 +136,6 @@ class WebsiteSaleAgent(WebsiteSale):
 
         return super().address(**kw)
 
-    @http.route()
     def payment_transaction(self, *args, **kwargs):
         """
         Override per assicurarsi che la transazione sia associata al cliente corretto.
@@ -240,6 +236,7 @@ class WebsiteSaleAgent(WebsiteSale):
             'state': 'draft',
             'is_agent_order': True,
             'created_by_agent_id': request.env.user.id,
+            'agent_order_status': 'quotation',  # Imposta stato a Preventivo
         }
 
         if post.get('order_note'):
@@ -301,6 +298,7 @@ class WebsiteSaleAgent(WebsiteSale):
             'state': 'sent',
             'is_agent_order': True,
             'created_by_agent_id': request.env.user.id,
+            'agent_order_status': 'agent_incoming',  # Imposta stato a Ordine in entrata da agente
         }
 
         if post.get('order_note'):

@@ -849,7 +849,7 @@
 
     <!-- JavaScript per ricerca clienti -->
     <template id="portal_customer_search_js" name="Customer Search JS" inherit_id="portal_select_customer">
-        <xpath expr="//div[@class='card-body']" position="after">
+        <xpath expr="//div[hasclass('card-body')]" position="after">
             <script type="text/javascript">
                 <![CDATA[
                 // Ricerca clienti

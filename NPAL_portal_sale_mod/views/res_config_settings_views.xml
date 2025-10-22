@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_inherit_agent" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.agent</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Aggiungi nuova app nelle impostazioni -->
+            <xpath expr="//form" position="inside">
+                <app string="Ordini Agenti" name="agent_orders" logo="/NPAL_portal_sale_mod/static/description/icon.png">
+                    <block title="Task Automatici">
+                        <setting id="agent_task_confirmation_users" help="Utenti che riceveranno un task quando un agente crea un nuovo ordine">
+                            <label for="task_confirmation_user_ids" string="Utenti Task Conferma Ordini"/>
+                            <div class="content-group">
+                                <field name="task_confirmation_user_ids" widget="many2many_tags" placeholder="Seleziona utenti..."/>
+                            </div>
+                        </setting>
+                        <setting id="agent_task_stale_users" help="Utenti che riceveranno task per ordini fermi da troppo tempo">
+                            <label for="task_stale_user_ids" string="Utenti Task Ordini Fermi"/>
+                            <div class="content-group">
+                                <field name="task_stale_user_ids" widget="many2many_tags" placeholder="Seleziona utenti..."/>
+                            </div>
+                        </setting>
+                        <setting id="agent_stale_days" help="Numero di giorni dopo i quali un ordine fermo genera un task">
+                            <label for="stale_order_days" string="Giorni per Ordine Fermo"/>
+                            <div class="content-group">
+                                <field name="stale_order_days"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
